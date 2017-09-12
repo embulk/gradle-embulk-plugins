@@ -1,6 +1,6 @@
 package org.embulk.plugins.gradle.tasks
 
-import org.gradle.api.internal.artifacts.configurations.DefaultConfiguration
+import org.gradle.api.artifacts.Configuration
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.bundling.Jar
 
@@ -54,11 +54,11 @@ class EmbulkPluginJar extends Jar {
             defaultNameOfConfigurationForProvidedDependencies;
     }
 
-    DefaultConfiguration getConfigurationForProvidedDependencies() {
+    Configuration getConfigurationForProvidedDependencies() {
         return this.configurationForProvidedDependencies
     }
 
-    void setConfigurationForProvidedDependencies(DefaultConfiguration configurationForProvidedDependencies) {
+    void setConfigurationForProvidedDependencies(Configuration configurationForProvidedDependencies) {
         this.configurationForProvidedDependencies = configurationForProvidedDependencies
     }
 
@@ -77,6 +77,6 @@ class EmbulkPluginJar extends Jar {
 
     private String mainClass
     private String defaultNameOfConfigurationForProvidedDependencies = "provided"
-    private DefaultConfiguration configurationForProvidedDependencies = null
+    private Configuration configurationForProvidedDependencies = null
     private File overriddenDestinationDir = null
 }
