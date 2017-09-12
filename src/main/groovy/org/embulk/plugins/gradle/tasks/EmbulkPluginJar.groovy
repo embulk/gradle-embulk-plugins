@@ -36,6 +36,13 @@ class EmbulkPluginJar extends Jar {
         super.copy()
     }
 
+    Configuration getArtifacts() {
+        Configuration artifactConfiguration = project.configurations.detachedConfiguration()
+        org.gradle.api.artifacts.ConfigurationPublications publications = artifactConfiguration.getOutgoing()
+        publications.artifact(this)
+        return artifactConfiguration
+    }
+
     String getMainClass() {
         return this.mainClass
     }
