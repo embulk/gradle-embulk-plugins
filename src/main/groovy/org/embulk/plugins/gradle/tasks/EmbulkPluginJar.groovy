@@ -73,6 +73,7 @@ class EmbulkPluginJar extends Jar {
     @Override  // org.gradle.api.tasks.bundling.Jar > org.gradle.api.tasks.bundling.AbstractArchiveTask
     void setDestinationDir(File overriddenDestinationDir) {
         this.overriddenDestinationDir = overriddenDestinationDir;
+        super.setDestinationDir(overriddenDestinationDir);
     }
 
     private String mainClass
