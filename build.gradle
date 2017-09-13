@@ -2,8 +2,11 @@ buildscript {
     repositories {
         mavenCentral()
         maven {
-            url "https://plugins.gradle.org/m2/"
+            url 'https://plugins.gradle.org/m2/'
         }
+    }
+    dependencies {
+        classpath 'com.gradle.publish:plugin-publish-plugin:0.9.7'
     }
 }
 
@@ -11,6 +14,7 @@ plugins {
     id 'groovy'
     id 'maven'
 }
+apply plugin: 'com.gradle.plugin-publish'
 
 group = 'org.embulk.plugins.gradle'
 version = '0.0.1'
@@ -23,11 +27,25 @@ repositories {
 }
 
 dependencies {
-    // TODO: Specifying specific versions
     compile gradleApi()
     compile localGroovy()
 }
 
 jar {
     from rootProject.file('LICENSE')
+}
+
+pluginBundle {
+    website = 'http://www.embulk.org/'
+    vcsUrl = 'https://github.com/embulk/embulk-plugins-gradle-plugin'
+
+    description = 'Build and publish Embulk Java plugins'
+    tags = ['embulk']
+
+    plugins {
+        embulkPluginsGradlePlugin {
+            id = 'org.embulk.plugins.gradle'
+            displayName = 'Embulk plugins Gradle plugin'
+        }
+    }
 }
