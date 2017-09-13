@@ -13,9 +13,23 @@ embulkPluginJar {
     // destinationDir = "pkg"  // Default: "pkg"
 }
 
+uploadEmbulkPluginJar {
+    configuration = embulkPluginJar.artifacts
+    mavenDeployer {
+        repository(url: "file:///path/to/maven/repository")
+    }
+}
+
 task myEmbulkPluginJar(type: org.embulk.plugins.gradle.EmbulkPluginJar) {
     mainClass = "org.embulk.output.example.ExampleOutputPlugin"  // Mandatory
     configurationForProvidedDependencies = configurations.myProvided
     destinationDir = "my_pkg"
+}
+
+task myUploadEmbulkPluginJar(type: org.embulk.plugins.gradle.tasks.MavenUploadEmbulkPluginJar) {
+    configuration = myEmbulkPluginJar.artifacts
+    mavenDeployer {
+        repository(url: "file:///path/to/another/maven/repository")
+    }
 }
 ```
