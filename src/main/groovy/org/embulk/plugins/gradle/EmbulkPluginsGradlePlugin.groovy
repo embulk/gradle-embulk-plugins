@@ -11,8 +11,9 @@ class EmbulkPluginsGradlePlugin implements Plugin<Project> {
     }
 
     protected void configureEmbulkPluginJarTask(final Project project) {
-        EmbulkPluginJar embulkPluginJarTask = project.tasks.create("embulkPluginJar", EmbulkPluginJar)
-        embulkPluginJarTask.group = "org.embulk.gradle"
+        final EmbulkPluginJar embulkPluginJarTask =
+            project.tasks.create("embulkPluginJar", EmbulkPluginJar)
+        embulkPluginJarTask.group = "org.embulk.plugins.gradle"
         embulkPluginJarTask.description = 'Create an Embulk plugin JAR file'
     }
 }
