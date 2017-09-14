@@ -5,6 +5,11 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.bundling.Jar
 
 class EmbulkPluginJar extends Jar {
+    EmbulkPluginJar() {
+        super()
+        with project.jar
+    }
+
     @TaskAction
     @Override
     void copy() {
