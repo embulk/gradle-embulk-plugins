@@ -11,6 +11,7 @@ embulkPluginJar {
     mainClass = "org.embulk.input.example.ExampleInputPlugin"  // Mandatory
     // configurationForProvidedDependencies = configurations.provided  // Default: "configurations.provided"
     // destinationDir = "pkg"  // Default: "pkg"
+    // extractsDependencies = true  // Default: true
 }
 
 uploadEmbulkPluginJar {
@@ -24,6 +25,8 @@ task myEmbulkPluginJar(type: org.embulk.plugins.gradle.EmbulkPluginJar) {
     mainClass = "org.embulk.output.example.ExampleOutputPlugin"  // Mandatory
     configurationForProvidedDependencies = configurations.myProvided
     destinationDir = "my_pkg"
+    extractsDependencies = false
+    pluginClassPathDir = "classpath"
 }
 
 task myUploadEmbulkPluginJar(type: org.embulk.plugins.gradle.tasks.MavenUploadEmbulkPluginJar) {
