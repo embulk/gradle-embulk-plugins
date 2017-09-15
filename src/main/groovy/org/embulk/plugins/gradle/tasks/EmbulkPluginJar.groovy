@@ -7,22 +7,12 @@ import org.gradle.api.tasks.bundling.Jar
 class EmbulkPluginJar extends Jar {
     EmbulkPluginJar() {
         super()
+
+        // Needs everything to be in |afterEvaluate| because:
+        // - Properties are not configured yet just in the constructor.
+        // - Child specs do not work in Jar/Copy's execution step since Gradle 4.
+        // |afterEvaluate| runs after configuration step before execution step.
         project.afterEvaluate {
-            with project.tasks.jar
-        }
-    }
-
-    @TaskAction
-    @Override
-    void copy() {
-        manifest {
-            attributes 'Embulk-Plugin-Spi-Version': "0",
-                       'Embulk-Plugin-Main-Class': mainClass,
-                       'Implementation-Title': project.name,
-                       'Implementation-Version': project.version
-        }
-
-        from {
             if (configurationForProvidedDependencies == null) {
                 configurationForProvidedDependencies =
                     project.configurations.getByName(defaultNameOfConfigurationForProvidedDependencies)
@@ -31,15 +21,59 @@ class EmbulkPluginJar extends Jar {
             // "provided" dependencies are excluded as they are provided at runtime by the Embulk core.
             def embedded = project.configurations.runtime - configurationForProvidedDependencies
 
-            // Dependencies are picked up with extracting ".jar" files.
-            embedded.collect { ( it.isFile() && it.name.endsWith(".jar") ) ? project.zipTree(it) : it }
+            if (extractsDependencies) {
+                from {
+                    // Dependencies are picked up with extracting ".jar" files.
+                    embedded.collect { ( it.isFile() && it.name.endsWith(".jar") ) ? project.zipTree(it) : it }
+                }
+                manifest {
+                    attributes 'Embulk-Plugin-Spi-Version': "0",
+                               'Embulk-Plugin-Main-Class': mainClass,
+                               'Implementation-Title': project.name,
+                               'Implementation-Version': project.version
+                }
+            } else {
+                String normalizedPluginClassPathDir = (pluginClassPathDir == null ? '' : pluginClassPathDir)
+                while (pluginClassPathDir.endsWith('/')) {
+                    normalizedPluginClassPathDir =
+                        normalizedPluginClassPathDir.substring(0, normalizedPluginClassPathDir.length() - 1)
+                }
+                into normalizedPluginClassPathDir, {
+                    from {
+                        embedded
+                    }
+                }
+                def dependencies = []
+                embedded.each {
+                    if ( it.isFile() && it.name.endsWith(".jar") ) {
+                        if (normalizedPluginClassPathDir.equals('')) {
+                            dependencies.add(it.name)
+                        } else {
+                            dependencies.add(normalizedPluginClassPathDir + '/' + it.name)
+                        }
+                    }
+                }
+                manifest {
+                    attributes 'Embulk-Plugin-Spi-Version': "0",
+                               'Embulk-Plugin-Main-Class': mainClass,
+                               'Embulk-Plugin-Class-Path': dependencies.join(' '),
+                               'Implementation-Title': project.name,
+                               'Implementation-Version': project.version
+                }
+            }
+
+            // Signature files of dependencies are excluded as they cause SecurityException.
+            exclude("META-INF/*.DSA")
+            exclude("META-INF/*.RSA")
+            exclude("META-INF/*.SF")
+
+            with project.tasks.jar
         }
+    }
 
-        // Signature files of dependencies are excluded as they cause SecurityException.
-        exclude("META-INF/*.DSA")
-        exclude("META-INF/*.RSA")
-        exclude("META-INF/*.SF")
-
+    @TaskAction
+    @Override
+    void copy() {
         super.copy()
     }
 
@@ -56,6 +90,22 @@ class EmbulkPluginJar extends Jar {
 
     void setMainClass(String mainClass) {
         this.mainClass = mainClass
+    }
+
+    boolean getExtractsDependencies() {
+        return this.extractsDependencies
+    }
+
+    void setExtractsDependencies(boolean extractsDependencies) {
+        this.extractsDependencies = extractsDependencies
+    }
+
+    String getPluginClassPathDir() {
+        return this.pluginClassPathDir
+    }
+
+    void setPluginClassPathDir(String pluginClassPathDir) {
+        this.pluginClassPathDir = pluginClassPathDir
     }
 
     String getDefaultNameOfConfigurationForProvidedDependencies() {
@@ -91,6 +141,8 @@ class EmbulkPluginJar extends Jar {
     }
 
     private String mainClass
+    private boolean extractsDependencies = true
+    private String pluginClassPathDir = ''
     private String defaultNameOfConfigurationForProvidedDependencies = "provided"
     private Configuration configurationForProvidedDependencies = null
     private File overriddenDestinationDir = null
