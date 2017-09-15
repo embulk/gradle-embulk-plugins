@@ -7,7 +7,9 @@ import org.gradle.api.tasks.bundling.Jar
 class EmbulkPluginJar extends Jar {
     EmbulkPluginJar() {
         super()
-        with project.tasks.create("__embulk_plugin_jar_internal_jar__", Jar)
+        project.afterEvaluate {
+            with project.tasks.jar
+        }
     }
 
     @TaskAction
