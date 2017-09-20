@@ -28,7 +28,6 @@ class EmbulkPluginJar extends Jar {
                 }
                 manifest {
                     attributes 'Embulk-Plugin-Spi-Version': "0",
-                               'Embulk-Plugin-Main-Class': mainClass,
                                'Implementation-Title': project.name,
                                'Implementation-Version': project.version
                 }
@@ -55,7 +54,6 @@ class EmbulkPluginJar extends Jar {
                 }
                 manifest {
                     attributes 'Embulk-Plugin-Spi-Version': "0",
-                               'Embulk-Plugin-Main-Class': mainClass,
                                'Embulk-Plugin-Class-Path': dependencies.join(' '),
                                'Implementation-Title': project.name,
                                'Implementation-Version': project.version
@@ -74,6 +72,9 @@ class EmbulkPluginJar extends Jar {
     @TaskAction
     @Override
     void copy() {
+        manifest {  // Existence of `mainClass` should be checked at execution time, not afterEvaluate.
+            attributes 'Embulk-Plugin-Main-Class': mainClass
+        }
         super.copy()
     }
 
