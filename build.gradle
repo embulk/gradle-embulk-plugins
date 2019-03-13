@@ -13,6 +13,7 @@ buildscript {
 plugins {
     id 'groovy'
     id 'maven'
+    id 'java-gradle-plugin'
 }
 apply plugin: 'com.gradle.plugin-publish'
 
@@ -24,11 +25,16 @@ targetCompatibility = '1.7'
 
 repositories {
     mavenLocal()
+    mavenCentral()
 }
 
 dependencies {
     compile gradleApi()
     compile localGroovy()
+    testCompile gradleTestKit()
+    testCompile('org.spockframework:spock-core:1.1-groovy-2.4') {
+        exclude group: 'org.codehaus.groovy'
+    }
 }
 
 jar {
