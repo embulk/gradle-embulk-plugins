@@ -1,6 +1,7 @@
 package org.embulk.plugins.gradle.tasks
 
-import groovy.lang.Closure;
+import org.gradle.api.GradleException
+import org.gradle.api.plugins.MavenPlugin;
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.Upload
 
@@ -14,6 +15,9 @@ class MavenUploadEmbulkPluginJar extends Upload {
     @TaskAction
     @Override
     void upload() {
+        if (!project.plugins.hasPlugin(MavenPlugin)) {
+            throw new GradleException("This task depends on Maven Plugin. Please apply it into your project.")
+        }
         repositories {
             mavenDeployer {
                 final Closure specifiedMavenDeployer = getMavenDeployerClosure().clone()
