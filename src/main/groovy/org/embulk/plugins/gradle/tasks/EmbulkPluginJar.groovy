@@ -32,32 +32,7 @@ class EmbulkPluginJar extends Jar {
                                'Implementation-Version': project.version
                 }
             } else {
-                String normalizedPluginClassPathDir = (pluginClassPathDir == null ? '' : pluginClassPathDir)
-                while (pluginClassPathDir.endsWith('/')) {
-                    normalizedPluginClassPathDir =
-                        normalizedPluginClassPathDir.substring(0, normalizedPluginClassPathDir.length() - 1)
-                }
-                into normalizedPluginClassPathDir, {
-                    from {
-                        embedded
-                    }
-                }
-                def dependencies = []
-                embedded.each {
-                    if ( it.isFile() && it.name.endsWith(".jar") ) {
-                        if (normalizedPluginClassPathDir.equals('')) {
-                            dependencies.add(it.name)
-                        } else {
-                            dependencies.add(normalizedPluginClassPathDir + '/' + it.name)
-                        }
-                    }
-                }
-                manifest {
-                    attributes 'Embulk-Plugin-Spi-Version': "0",
-                               'Embulk-Plugin-Class-Path': dependencies.join(' '),
-                               'Implementation-Title': project.name,
-                               'Implementation-Version': project.version
-                }
+                throw new UnsupportedOperationException("Specify dependencies as Maven dependencies of the plugin artifact")
             }
 
             // Signature files of dependencies are excluded as they cause SecurityException.
@@ -101,14 +76,6 @@ class EmbulkPluginJar extends Jar {
         this.extractsDependencies = extractsDependencies
     }
 
-    String getPluginClassPathDir() {
-        return this.pluginClassPathDir
-    }
-
-    void setPluginClassPathDir(String pluginClassPathDir) {
-        this.pluginClassPathDir = pluginClassPathDir
-    }
-
     String getDefaultNameOfConfigurationForProvidedDependencies() {
         return this.defaultNameOfConfigurationForProvidedDependencies
     }
@@ -143,7 +110,6 @@ class EmbulkPluginJar extends Jar {
 
     private String mainClass
     private boolean extractsDependencies = true
-    private String pluginClassPathDir = ''
     private String defaultNameOfConfigurationForProvidedDependencies = "provided"
     private Configuration configurationForProvidedDependencies = null
     private File overriddenDestinationDir = null
