@@ -1,0 +1,40 @@
+plugins {
+    id "java"
+    id "maven"
+    id "org.embulk.embulk-plugins"
+}
+
+group = "org.embulk.input.test1"
+archivesBaseName = "${project.name}"
+version = "0.2.5"
+description = "Embulk input plugin for testing 1"
+
+repositories {
+    jcenter()
+}
+
+sourceCompatibility = "1.8"
+targetCompatibility = "1.8"
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+}
+
+dependencies {
+    compileOnly "org.embulk:embulk-core:0.9.17"
+    compile "org.apache.commons:commons-text:1.7"
+}
+
+embulkPlugin {
+    mainClass = "org.embulk.input.test1.Test1InputPlugin"
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: "file:${project.buildDir}/mavenLocal")
+            snapshotRepository(url: "file:${project.buildDir}/mavenLocalSnapshot")
+        }
+    }
+}
