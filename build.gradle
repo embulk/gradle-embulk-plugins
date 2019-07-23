@@ -2,56 +2,68 @@ buildscript {
     repositories {
         mavenCentral()
         maven {
-            url 'https://plugins.gradle.org/m2/'
+            url "https://plugins.gradle.org/m2/"
         }
     }
     dependencies {
-        classpath 'com.gradle.publish:plugin-publish-plugin:0.9.7'
+        classpath "com.gradle.publish:plugin-publish-plugin:0.10.1"
     }
 }
 
-plugins {
-    id 'groovy'
-    id 'maven'
-    id 'java-gradle-plugin'
-}
-apply plugin: 'com.gradle.plugin-publish'
+apply plugin: "maven"
+apply plugin: "java-gradle-plugin"
+apply plugin: "com.gradle.plugin-publish"
 
-group = 'org.embulk.plugins.gradle'
-version = '0.1.0'
-
-sourceCompatibility = '1.7'
-targetCompatibility = '1.7'
+group = "org.embulk"
+archivesBaseName = "${project.name}"
+version = "0.2.0-SNAPSHOT"
+description = "A Gradle plugin to build and publish Embulk plugins"
 
 repositories {
-    mavenLocal()
     mavenCentral()
 }
 
+sourceCompatibility = "1.8"
+targetCompatibility = "1.8"
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+}
+
 dependencies {
-    compile gradleApi()
-    compile localGroovy()
-    testCompile gradleTestKit()
-    testCompile('org.spockframework:spock-core:1.1-groovy-2.4') {
-        exclude group: 'org.codehaus.groovy'
+    implementation gradleApi()
+
+    testImplementation gradleTestKit()
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.5.0"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.5.0"
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        outputs.upToDateWhen { false }
+        showStandardStreams = true
     }
 }
 
 jar {
-    from rootProject.file('LICENSE')
+    from rootProject.file("LICENSE")
+}
+
+gradlePlugin {
+    plugins {
+        embulkPluginsPlugin {
+            id = "org.embulk.embulk-plugins"
+            displayName = "A Gradle plugin for Embulk plugins"
+            description = "${project.description}"
+            implementationClass = "org.embulk.gradle.embulk_plugins.EmbulkPluginsPlugin"
+        }
+    }
 }
 
 pluginBundle {
-    website = 'http://www.embulk.org/'
-    vcsUrl = 'https://github.com/embulk/embulk-plugins-gradle-plugin'
-
-    description = 'Build and publish Embulk Java plugins'
-    tags = ['embulk']
-
-    plugins {
-        embulkPluginsGradlePlugin {
-            id = 'org.embulk.plugins.gradle'
-            displayName = 'Embulk plugins Gradle plugin'
-        }
-    }
+    website = "http://www.embulk.org/"
+    vcsUrl = "https://github.com/embulk/gradle-embulk-plugins"
+    tags = ["embulk"]
 }
