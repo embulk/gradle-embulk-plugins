@@ -5,34 +5,34 @@ Quick Guide
 ------------
 
 ```
-apply plugin: 'org.embulk.plugins.gradle'
-
-embulkPluginJar {
-    mainClass = "org.embulk.input.example.ExampleInputPlugin"  // Mandatory
-    // configurationForProvidedDependencies = configurations.provided  // Default: "configurations.provided"
-    // destinationDir = "pkg"  // Default: "pkg"
-    // extractsDependencies = true  // Default: true
-}
-
-uploadEmbulkPluginJar {
-    configuration = embulkPluginJar.artifacts
-    mavenDeployer {
-        repository(url: "file:///path/to/maven/repository")
+buildscript {
+    repositories {
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "gradle.plugin.org.embulk:gradle-embulk-plugin:0.2.0"
     }
 }
 
-task myEmbulkPluginJar(type: org.embulk.plugins.gradle.EmbulkPluginJar) {
-    mainClass = "org.embulk.output.example.ExampleOutputPlugin"  // Mandatory
-    configurationForProvidedDependencies = configurations.myProvided
-    destinationDir = "my_pkg"
-    extractsDependencies = false
-    pluginClassPathDir = "classpath"
+apply plugin: "java"
+apply plugin: "maven"
+
+// Once this Gradle plugin is applied, its dependencies are automatically updated to be flattened.
+// The update affects the default "jar" task, and default Maven uploading mechanisms as well.
+apply plugin: "org.embulk.embulk-plugins"
+
+embulkPlugin {
+    mainClass = "org.embulk.input.example.ExampleInputPlugin"  // Mandatory.
 }
 
-task myUploadEmbulkPluginJar(type: org.embulk.plugins.gradle.tasks.MavenUploadEmbulkPluginJar) {
-    configuration = myEmbulkPluginJar.artifacts
-    mavenDeployer {
-        repository(url: "file:///path/to/another/maven/repository")
+uploadArchives {  // You can use any uploading mechanism as you like.
+    repositories {
+        mavenDeployer {
+            repository(url: "file:${project.buildDir}/mavenLocal")
+            snapshotRepository(url: "file:${project.buildDir}/mavenLocalSnapshot")
+        }
     }
 }
 ```
