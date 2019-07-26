@@ -1,22 +1,16 @@
-buildscript {
-    repositories {
-        mavenCentral()
-        maven {
-            url "https://plugins.gradle.org/m2/"
-        }
-    }
-    dependencies {
-        classpath "com.gradle.publish:plugin-publish-plugin:0.10.1"
-    }
+plugins {
+    id "java"
+    id "maven"
+    id "java-gradle-plugin"
+    id "com.gradle.plugin-publish" version "0.10.1"
 }
 
-apply plugin: "maven"
-apply plugin: "java-gradle-plugin"
-apply plugin: "com.gradle.plugin-publish"
-
+// This Gradle plugin is published under the group "gradle.plugin.org.embulk".
+// We have an option to avoid the "gradle.plugin" prefix, but we don't do it as it bothers the Gradle team.
+// They want Gradle plugins to be published under the "gradle.plugin" prefix for some security reasons.
+// https://plugins.gradle.org/docs/publish-plugin
 group = "org.embulk"
-archivesBaseName = "${project.name}"
-version = "0.2.0-SNAPSHOT"
+version = "0.2.1-SNAPSHOT"
 description = "A Gradle plugin to build and publish Embulk plugins"
 
 repositories {

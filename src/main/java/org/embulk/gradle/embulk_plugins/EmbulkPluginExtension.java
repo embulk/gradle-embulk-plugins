@@ -16,7 +16,15 @@
 
 package org.embulk.gradle.embulk_plugins;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import org.gradle.api.GradleException;
 import org.gradle.api.Project;
+import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.provider.Property;
 
 /**
  * Configuration options for the {@link org.embulk.gradle.embulk_plugins.EmbulkPluginsPlugin}.
@@ -25,37 +33,76 @@ import org.gradle.api.Project;
  *
  * embulkPlugin {
  *     mainClass = "org.embulk.input.example.ExampleInputPlugin"
+ *     category = "input"
+ *     type = "example"
  *     flatRuntimeConfiguration = "embulkPluginFlatRuntime"
  * }}</pre>
  */
 public class EmbulkPluginExtension {
     public EmbulkPluginExtension(final Project project) {
-        this.mainClass = null;
-        this.flatRuntimeConfiguration = "embulkPluginFlatRuntime";
+        final ObjectFactory objectFactory = project.getObjects();
+
+        this.project = project;
+        this.mainClass = objectFactory.property(String.class);
+        this.category = objectFactory.property(String.class);
+        this.type = objectFactory.property(String.class);
+        this.flatRuntimeConfiguration = objectFactory.property(String.class);
+        this.flatRuntimeConfiguration.set("embulkPluginFlatRuntime");
     }
 
-    public String getMainClass() {
+    public Property<String> getMainClass() {
         return this.mainClass;
     }
 
-    public void setMainClass(final String mainClass) {
-        if (mainClass == null) {
-            throw new NullPointerException("mainClass must not be null.");
-        }
-        this.mainClass = mainClass;
+    public Property<String> getCategory() {
+        return this.category;
     }
 
-    public String getFlatRuntimeConfiguration() {
+    public Property<String> getType() {
+        return this.type;
+    }
+
+    public Property<String> getFlatRuntimeConfiguration() {
         return this.flatRuntimeConfiguration;
     }
 
-    public void setFlatRuntimeConfiguration(final String flatRuntimeConfiguration) {
-        if (flatRuntimeConfiguration == null) {
-            throw new NullPointerException("flatRuntimeConfiguration must not be null.");
+    public void checkValidity() {
+        final ArrayList<String> errors = new ArrayList<>();
+        if ((!this.mainClass.isPresent()) || this.mainClass.get().isEmpty()) {
+            errors.add("'mainClass' must be available in 'embulkPlugin'.");
         }
-        this.flatRuntimeConfiguration = flatRuntimeConfiguration;
+        if ((!this.category.isPresent()) || this.category.get().isEmpty()) {
+            errors.add("'category' must be available in 'embulkPlugin'.");
+        }
+        if (!CATEGORIES.contains(this.category.get())) {
+            errors.add("'category' must be one of: " + String.join(", ", CATEGORIES_ARRAY));
+        }
+        if ((!this.type.isPresent()) || this.type.get().isEmpty()) {
+            errors.add("'type' must be available in 'embulkPlugin'.");
+        }
+
+        if (!errors.isEmpty()) {
+            throw new GradleException("[gradle-embulk-plugins] " + String.join(" ", errors));
+        }
     }
 
-    private String mainClass;
-    private String flatRuntimeConfiguration;
+    private static final String[] CATEGORIES_ARRAY = {
+        "input",
+        "output",
+        "parser",
+        "formatter",
+        "decoder",
+        "encoder",
+        "filter",
+        "guess",
+        "executor"
+    };
+
+    private static final Set<String> CATEGORIES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(CATEGORIES_ARRAY)));
+
+    private final Project project;
+    private final Property<String> mainClass;
+    private final Property<String> category;
+    private final Property<String> type;
+    private final Property<String> flatRuntimeConfiguration;
 }
