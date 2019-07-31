@@ -256,7 +256,7 @@ class Gem extends AbstractArchiveTask {
         final Path filePath = dirPath.resolve(this.embulkPluginType.get() + ".rb");
         try (final PrintWriter writer = new PrintWriter(Files.newOutputStream(filePath, StandardOpenOption.CREATE_NEW))) {
             writer.println("Embulk::JavaPlugin.register_" + this.embulkPluginCategory.get() + "(");
-            writer.println("  \"" + this.embulkPluginType.get() + "\", \"" + this.embulkPluginMainClass.get() + "\"");
+            writer.println("  \"" + this.embulkPluginType.get() + "\", \"" + this.embulkPluginMainClass.get() + "\",");
             writer.println("  File.expand_path(\"../../../../classpath\", __FILE__))");
         } catch (final IOException ex) {
             throw new GradleException("Could not create and write: " + filePath.toString(), ex);
