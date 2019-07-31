@@ -30,6 +30,7 @@ import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.artifacts.maven.Conf2ScopeMapping;
 import org.gradle.api.artifacts.maven.Conf2ScopeMappingContainer;
 import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency;
+import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.MavenPlugin;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.bundling.Jar;
@@ -44,11 +45,13 @@ import org.gradle.api.tasks.bundling.Jar;
 public class EmbulkPluginsPlugin implements Plugin<Project> {
     @Override
     public void apply(final Project project) {
-        this.applyPlugin(project, "maven");
+        // The "java" plugin is required to be applied so that the "runtime" configuration will be available.
+        project.getPluginManager().apply(JavaPlugin.class);
+        project.getPluginManager().apply(MavenPlugin.class);
 
         final Class<JavaExec> jrubyExecClass = loadJRubyExecClass(project);
         if (jrubyExecClass != null) {
-            this.applyPlugin(project, "com.github.jruby-gradle.base");
+            project.getPluginManager().apply("com.github.jruby-gradle.base");
             project.getLogger().lifecycle("[gradle-embulk-plugins] JRuby/Gradle is applied.");
         }
 
@@ -68,17 +71,6 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         this.configureJarTask(project, extension);
 
         this.configureGemTasks(project, extension, runtimeConfiguration, jrubyExecClass);
-    }
-
-    /**
-     * Applies a plugin.
-     *
-     * <p>{@code apply plugin: "maven"}
-     */
-    private void applyPlugin(final Project project, final String pluginName) {
-        final Map<String, String> pluginMap = new HashMap<>();
-        pluginMap.put("plugin", pluginName);
-        project.apply(pluginMap);
     }
 
     private EmbulkPluginExtension createExtension(final Project project) {
