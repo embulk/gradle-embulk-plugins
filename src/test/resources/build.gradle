@@ -28,6 +28,8 @@ dependencies {
 
 embulkPlugin {
     mainClass = "org.embulk.input.test1.Test1InputPlugin"
+    category = "input"
+    type = "test1"
 }
 
 uploadArchives {
