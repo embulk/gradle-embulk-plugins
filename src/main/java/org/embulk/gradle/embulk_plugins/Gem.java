@@ -35,7 +35,9 @@ import javax.inject.Inject;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.internal.file.copy.CopyAction;
+import org.gradle.api.logging.Logger;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.gradle.api.provider.ListProperty;
@@ -67,12 +69,16 @@ class Gem extends AbstractArchiveTask {
         // https://guides.rubygems.org/specification-reference/#metadata
         this.metadata = objectFactory.mapProperty(String.class, String.class);
 
+        this.jrubyConfiguration = null;
+
         this.getArchiveExtension().set("gem");
     }
 
     @Override
     protected CopyAction createCopyAction() {
         final Project project = this.getProject();
+        final Logger logger = project.getLogger();
+        this.checkValidity(project, logger);
 
         this.cleanIfExists(project);
 
@@ -86,37 +92,23 @@ class Gem extends AbstractArchiveTask {
         this.createBootstrap(project);
         this.createGemspec(project, this.listFiles(project));
 
-        // Looking up an appropriate jruby-complete JAR via the JRuby/Gradle plugin.
-        final Configuration jrubyExecConfiguration = project.getConfigurations().getByName("jrubyExec");
-        File jrubyCompleteFileFound = null;
-        for (final File file : jrubyExecConfiguration.getFiles()) {
-            if (file.getName().startsWith("jruby-complete")) {
-                if (jrubyCompleteFileFound == null) {
-                    jrubyCompleteFileFound = file;
-                } else {
-                    throw new GradleException("Multiple jruby-complete runtimes are found.");
-                }
-                break;
-            }
-        }
-
-        if (jrubyCompleteFileFound == null) {
-            throw new GradleException("No jruby-complete runtime is found.");
-        }
-        final File jrubyCompleteFile = jrubyCompleteFileFound;
-        project.getLogger().lifecycle("Using JRuby at: " + jrubyCompleteFile.toString());
-
         final ArrayList<String> args = new ArrayList<>();
         args.add("-rjars/setup");
         args.add("-S");
         args.add("gem");
         args.add("build");
         args.add(project.getName() + ".gemspec");
-        project.getLogger().lifecycle("Running: `java org.jruby.Main " + String.join(" ", args) + "`");
+
+        final FileCollection jrubyFiles = (FileCollection) this.jrubyConfiguration;
+        if (logger.isLifecycleEnabled()) {
+            logger.lifecycle(args.stream().collect(Collectors.joining(" ", "Exec: `java org.jruby.Main ", "`")));
+            logger.lifecycle(
+                    jrubyFiles.getFiles().stream().map(File::toString).collect(Collectors.joining("],[", "Classpath: [", "]")));
+        }
 
         final ExecResult execResult = project.javaexec(javaExecSpec -> {
             javaExecSpec.setWorkingDir(getWorkingDir(project).toFile());
-            javaExecSpec.setClasspath(project.files(jrubyCompleteFile));
+            javaExecSpec.setClasspath(jrubyFiles);
             javaExecSpec.setMain("org.jruby.Main");
             javaExecSpec.setArgs(args);
 
@@ -137,7 +129,7 @@ class Gem extends AbstractArchiveTask {
         });
         execResult.assertNormalExitValue();
 
-        project.getLogger().lifecycle("The `gem build` command has finished successfully.");
+        logger.lifecycle("Exec `gem build` finished successfully.");
 
         return new GemCopyAction(
                 this.getWorkingDir(project).resolve(project.getName() + "-" + this.getArchiveVersion().get() + "-java.gem"),
@@ -172,7 +164,7 @@ class Gem extends AbstractArchiveTask {
         return this.metadata;
     }
 
-    public void checkValidity(final Project project) {
+    private void checkValidity(final Project project, final Logger logger) {
         final ArrayList<String> errors = new ArrayList<>();
         if ((!this.authors.isPresent()) || this.authors.get().isEmpty()) {
             errors.add("'authors' must not be empty in 'gem'.");
@@ -192,16 +184,16 @@ class Gem extends AbstractArchiveTask {
         }
 
         if (!this.gemDescription.isPresent()) {
-            project.getLogger().warn("[gradle-embulk-plugins] `project.description` or `gemDescription` in `gem` is recommended.");
+            logger.warn("[gradle-embulk-plugins] `project.description` or `gemDescription` in `gem` is recommended.");
         }
         if ((!this.email.isPresent()) || this.email.get().isEmpty()) {
-            project.getLogger().warn("[gradle-embulk-plugins] `email` is recommended in `gem`. For example: `email = [ \"foo@example.com\" ]");
+            logger.warn("[gradle-embulk-plugins] `email` is recommended in `gem`. For example: `email = [ \"foo@example.com\" ]");
         }
         if (!this.homepage.isPresent()) {
-            project.getLogger().warn("[gradle-embulk-plugins] `homepage` is recommended in `gem`. For example: `homepage = \"https://github.com/example/embulk-input-example\"");
+            logger.warn("[gradle-embulk-plugins] `homepage` is recommended in `gem`. For example: `homepage = \"https://github.com/example/embulk-input-example\"");
         }
         if ((!this.licenses.isPresent()) || this.licenses.get().isEmpty()) {
-            project.getLogger().warn("[gradle-embulk-plugins] `licenses` is recommended in `gem`. For example: `licenses = [ \"Apache-2.0\" ]");
+            logger.warn("[gradle-embulk-plugins] `licenses` is recommended in `gem`. For example: `licenses = [ \"Apache-2.0\" ]");
         }
     }
 
@@ -215,6 +207,10 @@ class Gem extends AbstractArchiveTask {
 
     void setEmbulkPluginType(final String embulkPluginType) {
         this.embulkPluginType.set(embulkPluginType);
+    }
+
+    void setJRubyConfiguration(final Configuration jrubyConfiguration) {
+        this.jrubyConfiguration = jrubyConfiguration;
     }
 
     private static String renderList(final List<String> strings) {
@@ -368,4 +364,6 @@ class Gem extends AbstractArchiveTask {
     // The singular `license` is to be substituted by `licenses`.
     private final ListProperty<String> licenses;
     private final MapProperty<String, String> metadata;
+
+    private Configuration jrubyConfiguration;
 }
