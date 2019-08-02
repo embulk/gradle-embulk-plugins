@@ -24,12 +24,28 @@ import javax.inject.Inject;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.JavaExec;
 
+/**
+ * A Gradle task to push (publish) a gem.
+ *
+ * <p>Configuration example:
+ *
+ * <pre>{@code gemPush {
+ *   host = "https://rubygems.org"
+ *
+ *   // JRuby artifact to execute `gem push`.
+ *   // NOTE: Not recommended for users to configure it because this Gradle plugin expects a fixed version of JRuby.
+ *   // For example, a certain version of `gem` would be required for command line options specified.
+ *   // This option is here just for a quick hack or debugging.
+ *   jruby = "org.jruby:jruby-complete:9.X.Y.Z"
+ * }}</pre>
+ */
 class GemPush extends JavaExec {
     @Inject
     public GemPush() {
@@ -38,7 +54,8 @@ class GemPush extends JavaExec {
         final ObjectFactory objectFactory = this.getProject().getObjects();
         this.host = objectFactory.property(String.class);
 
-        this.jrubyConfiguration = null;
+        this.jruby = objectFactory.property(Object.class);
+        this.jruby.set(EmbulkPluginsPlugin.DEFAULT_JRUBY);
     }
 
     @Override
@@ -53,7 +70,13 @@ class GemPush extends JavaExec {
         final Gem gemTask = (Gem) project.getTasks().getByName("gem");
         final File archiveFile = gemTask.getArchiveFile().get().getAsFile();
 
-        final FileCollection jrubyFiles = (FileCollection) this.jrubyConfiguration;
+        final Configuration jrubyConfiguration = project.getConfigurations().detachedConfiguration();
+        final Dependency jrubyDependency = project.getDependencies().create(this.jruby);
+        jrubyConfiguration.withDependencies(dependencies -> {
+            dependencies.add(jrubyDependency);
+        });
+
+        final FileCollection jrubyFiles = (FileCollection) jrubyConfiguration;
         this.setIgnoreExitValue(false);
         this.setWorkingDir(archiveFile.toPath().getParent().toFile());
         this.setClasspath(jrubyFiles);
@@ -89,11 +112,7 @@ class GemPush extends JavaExec {
         return this.host;
     }
 
-    void setJRubyConfiguration(final Configuration jrubyConfiguration) {
-        this.jrubyConfiguration = jrubyConfiguration;
-    }
-
     private final Property<String> host;
 
-    private Configuration jrubyConfiguration;
+    private final Property<Object> jruby;
 }
