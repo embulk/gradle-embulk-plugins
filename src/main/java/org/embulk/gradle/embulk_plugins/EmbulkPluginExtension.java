@@ -35,7 +35,8 @@ import org.gradle.api.provider.Property;
  *     mainClass = "org.embulk.input.example.ExampleInputPlugin"
  *     category = "input"
  *     type = "example"
- *     flatRuntimeConfiguration = "embulkPluginFlatRuntime"
+ *     flatRuntimeConfiguration = "embulkPluginFlatRuntime"  // Not recommended to configure it.
+ *     jruby = "org.jruby:jruby-complete:9.2.7.0"  // Not recommended to configure it.
  * }}</pre>
  */
 public class EmbulkPluginExtension {
@@ -48,6 +49,8 @@ public class EmbulkPluginExtension {
         this.type = objectFactory.property(String.class);
         this.flatRuntimeConfiguration = objectFactory.property(String.class);
         this.flatRuntimeConfiguration.set("embulkPluginFlatRuntime");
+        this.jruby = objectFactory.property(Object.class);
+        this.jruby.set("org.jruby:jruby-complete:9.2.7.0");
     }
 
     public Property<String> getMainClass() {
@@ -64,6 +67,13 @@ public class EmbulkPluginExtension {
 
     public Property<String> getFlatRuntimeConfiguration() {
         return this.flatRuntimeConfiguration;
+    }
+
+    /**
+     * Property to configure a dependency notation for JRuby to run `gem build` and `gem push` commands.
+     */
+    public Property<Object> getJruby() {
+        return this.jruby;
     }
 
     public void checkValidity() {
@@ -105,4 +115,5 @@ public class EmbulkPluginExtension {
     private final Property<String> category;
     private final Property<String> type;
     private final Property<String> flatRuntimeConfiguration;
+    private final Property<Object> jruby;
 }

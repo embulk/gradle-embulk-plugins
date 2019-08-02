@@ -5,28 +5,14 @@ Quick Guide
 ------------
 
 ```
-buildscript {
-    repositories {
-        maven {
-            url "https://plugins.gradle.org/m2/"
-        }
-    }
-    dependencies {
-        // Enable this when you want to publish your plugin as a gem.
-        // classpath "com.github.jruby-gradle:jruby-gradle-plugin:1.7.0"
-        classpath "gradle.plugin.org.embulk:gradle-embulk-plugin:0.2.1"
-    }
+plugins {
+    id "java"
+    id "maven"
+
+    // Once this Gradle plugin is applied, its transitive dependencies are automatically updated to be flattened.
+    // The update affects the default `jar` task, and default Maven uploading mechanisms as well.
+    id "org.embulk.embulk-plugins" version "0.2.4"
 }
-
-apply plugin: "java"
-apply plugin: "maven"
-
-// Enable this when you want to publish your plugin as a gem.
-// apply plugin: "com.github.jruby-gradle.base"
-
-// Once this Gradle plugin is applied, its dependencies are automatically updated to be flattened.
-// The update affects the default `jar` task, and default Maven uploading mechanisms as well.
-apply plugin: "org.embulk.embulk-plugins"
 
 group = "com.example"
 version = "0.1.5-ALPHA"
@@ -39,6 +25,14 @@ repositories {
 
 dependencies {
     compileOnly "org.embulk:embulk-core:0.9.17"
+
+    // Take care that other dependencies do not have transitive dependencies to `embulk-core` and its dependencies.
+    // You'll need to exclude those transitive dependencies explicitly in that case.
+    //
+    // For example:
+    // compile("org.embulk.base.restclient:embulk-base-restclient:0.5.0") {
+    //     exclude group: "org.embulk", module: "embulk-core"
+    // }
 
     testCompile "junit:junit:4.12"
 }
@@ -101,6 +95,15 @@ uploadArchives {
     * New:
       ```
       compileOnly "org.embulk:embulk-core:0.9.17"
+      ```
+    * Take care that **other dependencies do not have transitive dependencies to `embulk-core` and its dependencies**. You'll need to exclude it explicitly those transitive dependencies explicitly in that case. For example:
+      ```
+      compile("org.embulk.base.restclient:embulk-base-restclient:0.5.0") {
+          exclude group: "org.embulk", module: "embulk-core"
+      }
+      compile("org.glassfish.jersey.core:jersey-client:2.25.1") {
+          exclude group: "javax.inject", module: "javax.inject"  // embulk-core depends on javax.inject.
+      }
       ```
 4. **Remove** an unnecessary configuration.
     * `provided`
@@ -184,7 +187,7 @@ uploadArchives {
     * Using the [plugins DSL](https://docs.gradle.org/current/userguide/plugins.html#sec:plugins_block):
       ```
       plugins {
-          id "org.embulk.embulk-plugins" version "0.2.1"
+          id "org.embulk.embulk-plugins" version "0.2.4"
       }
     * Using [legacy plugin application](https://docs.gradle.org/current/userguide/plugins.html#sec:old_plugin_application):
       ```
@@ -195,7 +198,7 @@ uploadArchives {
           }
       }
       dependencies {
-          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.2.1"
+          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.2.4"
       }
 
       apply plugin: "org.embulk.embulk-plugins"
@@ -221,27 +224,6 @@ uploadArchives {
     }
     ```
 10. Configure more to publish your plugin as a gem.
-    * Apply the JRuby/Gradle plugin (the latest of its version 1.*):
-        * Using the [plugins DSL](https://docs.gradle.org/current/userguide/plugins.html#sec:plugins_block):
-          ```
-          plugins {
-              id "com.github.jruby-gradle.base" version "1.7.0"
-          }
-        * Using [legacy plugin application](https://docs.gradle.org/current/userguide/plugins.html#sec:old_plugin_application):
-          ```
-          buildscript {
-              repositories {
-                  maven {
-                      url "https://plugins.gradle.org/m2/"
-                  }
-              }
-              dependencies {
-                  classpath "com.github.jruby-gradle:jruby-gradle-plugin:1.7.0"
-              }
-          }
-
-          apply plugin: "com.github.jruby-gradle.base"
-          ```
     * Configure the `gem` task. Note that `gem` is a type of archive tasks such as `jar` and `zip`, with some additional properties to fulfill `.gemspec`:
       ```
       gem {
@@ -262,3 +244,5 @@ uploadArchives {
           host = "https://rubygems.org"
       }
       ```
+    * Note that `rubygems` 2.7.9 embedded in JRuby 9.2.7.0 (the latest as of July 2019) does not support multi-factor authentication (OTP) yet. You'll need to set your authentication level to "UI only" when you push your gem into https://rubygems.org.
+        * https://guides.rubygems.org/setting-up-multifactor-authentication/

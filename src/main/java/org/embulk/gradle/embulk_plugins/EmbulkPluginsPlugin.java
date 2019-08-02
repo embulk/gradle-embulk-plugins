@@ -18,6 +18,7 @@ package org.embulk.gradle.embulk_plugins;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,10 +27,10 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.artifacts.maven.Conf2ScopeMapping;
 import org.gradle.api.artifacts.maven.Conf2ScopeMappingContainer;
-import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.MavenPlugin;
 import org.gradle.api.tasks.JavaExec;
@@ -49,20 +50,16 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         project.getPluginManager().apply(JavaPlugin.class);
         project.getPluginManager().apply(MavenPlugin.class);
 
-        final Class<JavaExec> jrubyExecClass = loadJRubyExecClass(project);
-        if (jrubyExecClass != null) {
-            project.getPluginManager().apply("com.github.jruby-gradle.base");
-            project.getLogger().lifecycle("[gradle-embulk-plugins] JRuby/Gradle is applied.");
-        }
-
         final EmbulkPluginExtension extension = createExtension(project);
         project.afterEvaluate(projectInner -> {
             extension.checkValidity();
         });
 
         final Configuration runtimeConfiguration = project.getConfigurations().getByName("runtime");
+
+        // It must be a non-detached configuration to be mapped into Maven scopes by Conf2ScopeMapping.
         final Configuration flatRuntimeConfiguration =
-                project.getConfigurations().create(extension.getFlatRuntimeConfiguration().get());
+                project.getConfigurations().maybeCreate(extension.getFlatRuntimeConfiguration().get());
 
         this.configureFlatRuntime(project, runtimeConfiguration, flatRuntimeConfiguration);
 
@@ -70,7 +67,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
         this.configureJarTask(project, extension);
 
-        this.configureGemTasks(project, extension, runtimeConfiguration, jrubyExecClass);
+        this.configureGemTasks(project, extension, runtimeConfiguration);
     }
 
     private EmbulkPluginExtension createExtension(final Project project) {
@@ -96,9 +93,11 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                 }
 
                 for (final ResolvedDependency dependency : allDependencies.values()) {
-                    dependencies.add(new DefaultExternalModuleDependency(dependency.getModuleGroup(),
-                                                                         dependency.getModuleName(),
-                                                                         dependency.getModuleVersion()));
+                    final HashMap<String, String> notation = new HashMap<>();
+                    notation.put("group", dependency.getModuleGroup());
+                    notation.put("name", dependency.getModuleName());
+                    notation.put("version", dependency.getModuleVersion());
+                    dependencies.add(project.getDependencies().create(notation));
                 }
             });
     }
@@ -154,9 +153,8 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
     private void configureGemTasks(
             final Project originalProject,
             final EmbulkPluginExtension extension,
-            final Configuration runtimeConfiguration,
-            final Class<JavaExec> jrubyExecClass) {
-        if (jrubyExecClass != null) {
+            final Configuration runtimeConfiguration) {
+        if (extension.getJruby().isPresent() && extension.getJruby().get() != null && !extension.getJruby().get().equals("")) {
             originalProject.getTasks().create("gem", Gem.class, task -> {
                 task.dependsOn("jar");
             });
@@ -166,7 +164,15 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             });
 
             originalProject.afterEvaluate(project -> {
+                final Configuration jrubyConfiguration = project.getConfigurations().detachedConfiguration();
+                final Dependency jrubyDependency = project.getDependencies().create(extension.getJruby().get());
+                jrubyConfiguration.withDependencies(dependencies -> {
+                    dependencies.add(jrubyDependency);
+                });
+
                 project.getTasks().named("gem", Gem.class, task -> {
+                    task.setJRubyConfiguration(jrubyConfiguration);
+
                     task.setEmbulkPluginMainClass(extension.getMainClass().get());
                     task.setEmbulkPluginCategory(extension.getCategory().get());
                     task.setEmbulkPluginType(extension.getType().get());
@@ -189,8 +195,6 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                         task.getGemDescription().set(project.getDescription());
                     }
 
-                    task.checkValidity(project);
-
                     task.getDestinationDirectory().set(((File) project.property("buildDir")).toPath().resolve("gems").toFile());
                     task.from(runtimeConfiguration, copySpec -> {
                         copySpec.into("classpath");
@@ -198,6 +202,10 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                     task.from(((Jar) project.getTasks().getByName("jar")).getArchiveFile(), copySpec -> {
                         copySpec.into("classpath");
                     });
+                });
+
+                project.getTasks().named("gemPush", GemPush.class, task -> {
+                    task.setJRubyConfiguration(jrubyConfiguration);
                 });
             });
         }
@@ -214,23 +222,6 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         else {
             return mavenVersion;
         }
-    }
-
-    private Class<JavaExec> loadJRubyExecClass(final Project project) {
-        try {
-            final Class<JavaExec> jrubyExecClass = loadJRubyExecClassInternal(this.getClass().getClassLoader());
-            project.getLogger().lifecycle("[gradle-embulk-plugins] JRuby/Gradle is here. Gem-related tasks are ready for Embulk plugins.");
-            return jrubyExecClass;
-        } catch (final ClassNotFoundException | ClassCastException ex) {
-            project.getLogger().warn("[gradle-embulk-plugins] JRuby/Gradle is not loaded. Apply \"com.github.jruby-gradle.base\" to activate Gem-related tasks for Embulk plugins.");
-            return null;
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Class<JavaExec> loadJRubyExecClassInternal(final ClassLoader classLoader)
-            throws ClassNotFoundException, ClassCastException {
-        return (Class<JavaExec>) classLoader.loadClass("com.github.jrubygradle.JRubyExec");
     }
 
     /**

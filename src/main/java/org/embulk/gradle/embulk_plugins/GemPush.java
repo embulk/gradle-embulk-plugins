@@ -19,10 +19,13 @@ package org.embulk.gradle.embulk_plugins;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.file.FileCollection;
+import org.gradle.api.logging.Logger;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.JavaExec;
@@ -34,6 +37,8 @@ class GemPush extends JavaExec {
 
         final ObjectFactory objectFactory = this.getProject().getObjects();
         this.host = objectFactory.property(String.class);
+
+        this.jrubyConfiguration = null;
     }
 
     @Override
@@ -43,32 +48,15 @@ class GemPush extends JavaExec {
         }
 
         final Project project = this.getProject();
-
-        // Looking up an appropriate jruby-complete JAR via the JRuby/Gradle plugin.
-        final Configuration jrubyExecConfiguration = project.getConfigurations().getByName("jrubyExec");
-        File jrubyCompleteFileFound = null;
-        for (final File file : jrubyExecConfiguration.getFiles()) {
-            if (file.getName().startsWith("jruby-complete")) {
-                if (jrubyCompleteFileFound == null) {
-                    jrubyCompleteFileFound = file;
-                } else {
-                    throw new GradleException("Multiple jruby-complete runtimes are found.");
-                }
-                break;
-            }
-        }
-
-        if (jrubyCompleteFileFound == null) {
-            throw new GradleException("No jruby-complete runtime is found.");
-        }
-        final File jrubyCompleteFile = jrubyCompleteFileFound;
-        project.getLogger().lifecycle("Using JRuby at: " + jrubyCompleteFile.toString());
+        final Logger logger = project.getLogger();
 
         final Gem gemTask = (Gem) project.getTasks().getByName("gem");
         final File archiveFile = gemTask.getArchiveFile().get().getAsFile();
 
+        final FileCollection jrubyFiles = (FileCollection) this.jrubyConfiguration;
+        this.setIgnoreExitValue(false);
         this.setWorkingDir(archiveFile.toPath().getParent().toFile());
-        this.setClasspath(project.files(jrubyCompleteFile));
+        this.setClasspath(jrubyFiles);
         this.setMain("org.jruby.Main");
 
         final ArrayList<String> args = new ArrayList<>();
@@ -80,7 +68,11 @@ class GemPush extends JavaExec {
         args.add("--verbose");
         this.setArgs(args);
 
-        project.getLogger().lifecycle("Running: `java org.jruby.Main " + String.join(" ", args) + "`");
+        if (logger.isLifecycleEnabled()) {
+            logger.lifecycle(args.stream().collect(Collectors.joining(" ", "Exec: `java org.jruby.Main ", "`")));
+            logger.lifecycle(
+                    jrubyFiles.getFiles().stream().map(File::toString).collect(Collectors.joining("],[", "Classpath: [", "]")));
+        }
 
         final HashMap<String, Object> environments = new HashMap<>();
         environments.putAll(System.getenv());
@@ -89,11 +81,19 @@ class GemPush extends JavaExec {
         this.setEnvironment(environments);
 
         super.exec();
+
+        logger.lifecycle("Exec `gem push` finished successfully.");
     }
 
     public Property<String> getHost() {
         return this.host;
     }
 
+    void setJRubyConfiguration(final Configuration jrubyConfiguration) {
+        this.jrubyConfiguration = jrubyConfiguration;
+    }
+
     private final Property<String> host;
+
+    private Configuration jrubyConfiguration;
 }
