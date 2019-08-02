@@ -77,7 +77,24 @@ class GemPush extends JavaExec {
         final HashMap<String, Object> environments = new HashMap<>();
         environments.putAll(System.getenv());
         environments.putAll(this.getEnvironment());
+
+        // Clearing GEM_HOME and GEM_PATH so that user environment variables do not affect the gem execution.
+        environments.remove("GEM_HOME");
+        environments.remove("GEM_PATH");
+
+        // JARS_LOCK, JARS_HOME, and JARS_SKIP are for "jar-dependencies".
+        // https://github.com/mkristian/jar-dependencies/wiki/Jars.lock#jarslock-filename
+        environments.remove("JARS_LOCK");
+        // https://github.com/mkristian/jar-dependencies/blob/0.4.0/Readme.md#configuration
+        environments.remove("JARS_HOME");
+        environments.put("JARS_SKIP", "true");
+
+        // https://github.com/mkristian/jbundler/wiki/Configuration
+        environments.put("JBUNDLE_SKIP", "true");
+
+        // Set the RubyGems host for sure.
         environments.put("RUBYGEMS_HOST", this.getHost().get());
+
         this.setEnvironment(environments);
 
         super.exec();
