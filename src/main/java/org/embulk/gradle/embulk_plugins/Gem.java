@@ -35,6 +35,7 @@ import javax.inject.Inject;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.internal.file.copy.CopyAction;
 import org.gradle.api.logging.Logger;
@@ -47,6 +48,23 @@ import org.gradle.process.ExecResult;
 
 /**
  * A Gradle task to build a gem.
+ *
+ * <p>Configuration example:
+ *
+ * <pre>{@code gem {
+ *   from("LICENSE")
+ *   authors = [ "Somebody Somewhere" ]
+ *   email = [ "somebody@example.com" ]
+ *   summary = "Example input plugin for Embulk"
+ *   homepage = "https://example.com"
+ *   licenses = [ "Apache-2.0" ]
+ *
+ *   // JRuby artifact to execute `gem build`.
+ *   // NOTE: Not recommended for users to configure it because this Gradle plugin expects a fixed version of JRuby.
+ *   // For example, a certain version of `gem` would be required for command line options specified.
+ *   // This option is here just for a quick hack or debugging.
+ *   jruby = "org.jruby:jruby-complete:9.X.Y.Z"
+ * }}</pre>
  */
 class Gem extends AbstractArchiveTask {
     @Inject
@@ -69,7 +87,8 @@ class Gem extends AbstractArchiveTask {
         // https://guides.rubygems.org/specification-reference/#metadata
         this.metadata = objectFactory.mapProperty(String.class, String.class);
 
-        this.jrubyConfiguration = null;
+        this.jruby = objectFactory.property(Object.class);
+        this.jruby.set(EmbulkPluginsPlugin.DEFAULT_JRUBY);
 
         this.getArchiveExtension().set("gem");
     }
@@ -99,7 +118,13 @@ class Gem extends AbstractArchiveTask {
         args.add("build");
         args.add(project.getName() + ".gemspec");
 
-        final FileCollection jrubyFiles = (FileCollection) this.jrubyConfiguration;
+        final Configuration jrubyConfiguration = project.getConfigurations().detachedConfiguration();
+        final Dependency jrubyDependency = project.getDependencies().create(this.jruby);
+        jrubyConfiguration.withDependencies(dependencies -> {
+            dependencies.add(jrubyDependency);
+        });
+
+        final FileCollection jrubyFiles = (FileCollection) jrubyConfiguration;
         if (logger.isLifecycleEnabled()) {
             logger.lifecycle(args.stream().collect(Collectors.joining(" ", "Exec: `java org.jruby.Main ", "`")));
             logger.lifecycle(
@@ -164,6 +189,13 @@ class Gem extends AbstractArchiveTask {
         return this.metadata;
     }
 
+    /**
+     * Property to configure a dependency notation for JRuby to run `gem build` and `gem push` commands.
+     */
+    public Property<Object> getJruby() {
+        return this.jruby;
+    }
+
     private void checkValidity(final Project project, final Logger logger) {
         final ArrayList<String> errors = new ArrayList<>();
         if ((!this.authors.isPresent()) || this.authors.get().isEmpty()) {
@@ -207,10 +239,6 @@ class Gem extends AbstractArchiveTask {
 
     void setEmbulkPluginType(final String embulkPluginType) {
         this.embulkPluginType.set(embulkPluginType);
-    }
-
-    void setJRubyConfiguration(final Configuration jrubyConfiguration) {
-        this.jrubyConfiguration = jrubyConfiguration;
     }
 
     private static String renderList(final List<String> strings) {
@@ -365,5 +393,5 @@ class Gem extends AbstractArchiveTask {
     private final ListProperty<String> licenses;
     private final MapProperty<String, String> metadata;
 
-    private Configuration jrubyConfiguration;
+    private final Property<Object> jruby;
 }

@@ -197,61 +197,47 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             final Project originalProject,
             final EmbulkPluginExtension extension,
             final Configuration runtimeConfiguration) {
-        if (extension.getJruby().isPresent() && extension.getJruby().get() != null && !extension.getJruby().get().equals("")) {
-            originalProject.getTasks().create("gem", Gem.class, task -> {
-                task.dependsOn("jar");
-            });
+        originalProject.getTasks().create("gem", Gem.class, task -> {
+            task.dependsOn("jar");
+        });
 
-            originalProject.getTasks().create("gemPush", GemPush.class, task -> {
-                task.dependsOn("gem");
-            });
+        originalProject.getTasks().create("gemPush", GemPush.class, task -> {
+            task.dependsOn("gem");
+        });
 
-            originalProject.afterEvaluate(project -> {
-                final Configuration jrubyConfiguration = project.getConfigurations().detachedConfiguration();
-                final Dependency jrubyDependency = project.getDependencies().create(extension.getJruby().get());
-                jrubyConfiguration.withDependencies(dependencies -> {
-                    dependencies.add(jrubyDependency);
+        originalProject.afterEvaluate(project -> {
+            project.getTasks().named("gem", Gem.class, task -> {
+                task.setEmbulkPluginMainClass(extension.getMainClass().get());
+                task.setEmbulkPluginCategory(extension.getCategory().get());
+                task.setEmbulkPluginType(extension.getType().get());
+
+                if ((!task.getArchiveBaseName().isPresent())) {
+                    // project.getName() never returns null.
+                    // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/Project.html#getName--
+                    task.getArchiveBaseName().set(project.getName());
+                }
+                // summary is kept empty -- mandatory.
+                if ((!task.getArchiveVersion().isPresent()) && (!project.getVersion().toString().equals("unspecified"))) {
+                    // project.getVersion() never returns null.
+                    // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/Project.html#getVersion--
+                    task.getArchiveVersion().set(buildGemVersionFromMavenVersion(project.getVersion().toString()));
+                }
+
+                if (!task.getGemDescription().isPresent() && project.getDescription() != null) {
+                    // project.getDescription() may return null.
+                    // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/Project.html#getDescription--
+                    task.getGemDescription().set(project.getDescription());
+                }
+
+                task.getDestinationDirectory().set(((File) project.property("buildDir")).toPath().resolve("gems").toFile());
+                task.from(runtimeConfiguration, copySpec -> {
+                    copySpec.into("classpath");
                 });
-
-                project.getTasks().named("gem", Gem.class, task -> {
-                    task.setJRubyConfiguration(jrubyConfiguration);
-
-                    task.setEmbulkPluginMainClass(extension.getMainClass().get());
-                    task.setEmbulkPluginCategory(extension.getCategory().get());
-                    task.setEmbulkPluginType(extension.getType().get());
-
-                    if ((!task.getArchiveBaseName().isPresent())) {
-                        // project.getName() never returns null.
-                        // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/Project.html#getName--
-                        task.getArchiveBaseName().set(project.getName());
-                    }
-                    // summary is kept empty -- mandatory.
-                    if ((!task.getArchiveVersion().isPresent()) && (!project.getVersion().toString().equals("unspecified"))) {
-                        // project.getVersion() never returns null.
-                        // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/Project.html#getVersion--
-                        task.getArchiveVersion().set(buildGemVersionFromMavenVersion(project.getVersion().toString()));
-                    }
-
-                    if (!task.getGemDescription().isPresent() && project.getDescription() != null) {
-                        // project.getDescription() may return null.
-                        // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/Project.html#getDescription--
-                        task.getGemDescription().set(project.getDescription());
-                    }
-
-                    task.getDestinationDirectory().set(((File) project.property("buildDir")).toPath().resolve("gems").toFile());
-                    task.from(runtimeConfiguration, copySpec -> {
-                        copySpec.into("classpath");
-                    });
-                    task.from(((Jar) project.getTasks().getByName("jar")).getArchiveFile(), copySpec -> {
-                        copySpec.into("classpath");
-                    });
-                });
-
-                project.getTasks().named("gemPush", GemPush.class, task -> {
-                    task.setJRubyConfiguration(jrubyConfiguration);
+                task.from(((Jar) project.getTasks().getByName("jar")).getArchiveFile(), copySpec -> {
+                    copySpec.into("classpath");
                 });
             });
-        }
+        });
     }
 
     private static String buildGemVersionFromMavenVersion(final String mavenVersion) {
@@ -295,4 +281,6 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             }
         }
     }
+
+    static final String DEFAULT_JRUBY = "org.jruby:jruby-complete:9.2.7.0";
 }
