@@ -140,16 +140,21 @@ class Gem extends AbstractArchiveTask {
             final HashMap<String, Object> environments = new HashMap<>();
             environments.putAll(System.getenv());
             environments.putAll(javaExecSpec.getEnvironment());
-            /*
-            environments.put(
-                'JBUNDLE_SKIP' : true,
-                'JARS_SKIP' : true,
-                'PATH' : getComputedPATH(System.getenv().get(JRubyExecUtils.pathVar())),
-                'GEM_HOME' : getGemWorkDir().absolutePath,
-                'GEM_PATH' : getGemWorkDir().absolutePath,
-                'JARS_HOME' : new File(getGemWorkDir().absolutePath, 'jars'),
-                'JARS_LOCK' : new File(getGemWorkDir().absolutePath, 'Jars.lock')
-            */
+
+            // Clearing GEM_HOME and GEM_PATH so that user environment variables do not affect the gem execution.
+            environments.remove("GEM_HOME");
+            environments.remove("GEM_PATH");
+
+            // JARS_LOCK, JARS_HOME, and JARS_SKIP are for "jar-dependencies".
+            // https://github.com/mkristian/jar-dependencies/wiki/Jars.lock#jarslock-filename
+            environments.remove("JARS_LOCK");
+            // https://github.com/mkristian/jar-dependencies/blob/0.4.0/Readme.md#configuration
+            environments.remove("JARS_HOME");
+            environments.put("JARS_SKIP", "true");
+
+            // https://github.com/mkristian/jbundler/wiki/Configuration
+            environments.put("JBUNDLE_SKIP", "true");
+
             javaExecSpec.setEnvironment(environments);
         });
         execResult.assertNormalExitValue();
