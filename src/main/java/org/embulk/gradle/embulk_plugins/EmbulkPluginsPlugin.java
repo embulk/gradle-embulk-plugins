@@ -36,7 +36,7 @@ import org.gradle.api.artifacts.maven.Conf2ScopeMappingContainer;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.MavenPlugin;
-import org.gradle.api.tasks.JavaExec;
+import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.Jar;
 
 /**
@@ -206,7 +206,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         });
 
         originalProject.afterEvaluate(project -> {
-            project.getTasks().named("gem", Gem.class, task -> {
+            final TaskProvider<Gem> gemTask = project.getTasks().named("gem", Gem.class, task -> {
                 task.setEmbulkPluginMainClass(extension.getMainClass().get());
                 task.setEmbulkPluginCategory(extension.getCategory().get());
                 task.setEmbulkPluginType(extension.getType().get());
@@ -236,6 +236,12 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                 task.from(((Jar) project.getTasks().getByName("jar")).getArchiveFile(), copySpec -> {
                     copySpec.into("classpath");
                 });
+            });
+
+            project.getTasks().named("gemPush", GemPush.class, task -> {
+                if (!task.getGem().isPresent()) {
+                    task.getGem().set(gemTask.get().getArchiveFile());
+                }
             });
         });
     }

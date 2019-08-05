@@ -21,15 +21,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
+import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.file.FileCollection;
+import org.gradle.api.file.FileType;
+import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
-import org.gradle.api.tasks.JavaExec;
+import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.ChangeType;
+import org.gradle.work.FileChange;
+import org.gradle.work.Incremental;
+import org.gradle.work.InputChanges;
+import org.gradle.process.ExecResult;
 
 /**
  * A Gradle task to push (publish) a gem.
@@ -46,7 +55,7 @@ import org.gradle.api.tasks.JavaExec;
  *   jruby = "org.jruby:jruby-complete:9.X.Y.Z"
  * }}</pre>
  */
-class GemPush extends JavaExec {
+abstract class GemPush extends DefaultTask {
     @Inject
     public GemPush() {
         super();
@@ -58,29 +67,46 @@ class GemPush extends JavaExec {
         this.jruby.set(EmbulkPluginsPlugin.DEFAULT_JRUBY);
     }
 
-    @Override
-    public void exec() {
-        if ((!this.getHost().isPresent()) || this.getHost().get().isEmpty()) {
-            throw new GradleException("`host` must be specified in `gemPush`.");
-        }
+    @Incremental
+    @InputFile
+    abstract RegularFileProperty getGem();
 
+    @TaskAction
+    public void exec(final InputChanges inputChanges) {
         final Project project = this.getProject();
         final Logger logger = project.getLogger();
 
-        final Gem gemTask = (Gem) project.getTasks().getByName("gem");
-        final File archiveFile = gemTask.getArchiveFile().get().getAsFile();
+        if (inputChanges.isIncremental()) {
+            logger.lifecycle("Executing incrementally.");
+        } else {
+            logger.lifecycle("Executing non-incrementally.");
+        }
 
-        final Configuration jrubyConfiguration = project.getConfigurations().detachedConfiguration();
-        final Dependency jrubyDependency = project.getDependencies().create(this.jruby);
-        jrubyConfiguration.withDependencies(dependencies -> {
-            dependencies.add(jrubyDependency);
-        });
+        final ArrayList<File> gemFiles = new ArrayList<>();
+        for (final FileChange change : inputChanges.getFileChanges(this.getGem())) {
+            if (change.getFileType() == FileType.DIRECTORY) {
+                throw new GradleException("Unexpected: directory is input for `gemPush`.");
+            }
+            if (change.getChangeType() == ChangeType.REMOVED) {
+                throw new GradleException("Unexpected: file removal is input for `gemPush`.");
+            }
+            gemFiles.add(change.getFile());
+        }
 
-        final FileCollection jrubyFiles = (FileCollection) jrubyConfiguration;
-        this.setIgnoreExitValue(false);
-        this.setWorkingDir(archiveFile.toPath().getParent().toFile());
-        this.setClasspath(jrubyFiles);
-        this.setMain("org.jruby.Main");
+        if (gemFiles.isEmpty()) {
+            logger.lifecycle("Up-to-date.");
+            return;
+        }
+        if (gemFiles.size() > 1) {
+            throw new GradleException("Unexpected: multiple files are input for `gemPush`.");
+        }
+
+        final File archiveFile = gemFiles.get(0);
+
+        if ((!this.getHost().isPresent()) || this.getHost().get().isEmpty()) {
+            throw new GradleException("`host` must be specified in `gemPush`.");
+        }
+        final String rubygemsHost = this.getHost().get();
 
         final ArrayList<String> args = new ArrayList<>();
         args.add("-rjars/setup");
@@ -89,38 +115,52 @@ class GemPush extends JavaExec {
         args.add("push");
         args.add(archiveFile.toString());
         args.add("--verbose");
-        this.setArgs(args);
 
+        final Configuration jrubyConfiguration = project.getConfigurations().detachedConfiguration();
+        final Dependency jrubyDependency = project.getDependencies().create(this.jruby);
+        jrubyConfiguration.withDependencies(dependencies -> {
+            dependencies.add(jrubyDependency);
+        });
+
+        final FileCollection jrubyFiles = (FileCollection) jrubyConfiguration;
         if (logger.isLifecycleEnabled()) {
             logger.lifecycle(args.stream().collect(Collectors.joining(" ", "Exec: `java org.jruby.Main ", "`")));
             logger.lifecycle(
                     jrubyFiles.getFiles().stream().map(File::toString).collect(Collectors.joining("],[", "Classpath: [", "]")));
         }
 
-        final HashMap<String, Object> environments = new HashMap<>();
-        environments.putAll(System.getenv());
-        environments.putAll(this.getEnvironment());
+        final ExecResult execResult = project.javaexec(javaExecSpec -> {
+            javaExecSpec.setWorkingDir(archiveFile.toPath().getParent().toFile());
+            javaExecSpec.setClasspath(jrubyFiles);
+            javaExecSpec.setMain("org.jruby.Main");
+            javaExecSpec.setArgs(args);
 
-        // Clearing GEM_HOME and GEM_PATH so that user environment variables do not affect the gem execution.
-        environments.remove("GEM_HOME");
-        environments.remove("GEM_PATH");
+            javaExecSpec.setIgnoreExitValue(false);
 
-        // JARS_LOCK, JARS_HOME, and JARS_SKIP are for "jar-dependencies".
-        // https://github.com/mkristian/jar-dependencies/wiki/Jars.lock#jarslock-filename
-        environments.remove("JARS_LOCK");
-        // https://github.com/mkristian/jar-dependencies/blob/0.4.0/Readme.md#configuration
-        environments.remove("JARS_HOME");
-        environments.put("JARS_SKIP", "true");
+            final HashMap<String, Object> environments = new HashMap<>();
+            environments.putAll(System.getenv());
+            environments.putAll(javaExecSpec.getEnvironment());
 
-        // https://github.com/mkristian/jbundler/wiki/Configuration
-        environments.put("JBUNDLE_SKIP", "true");
+            // Clearing GEM_HOME and GEM_PATH so that user environment variables do not affect the gem execution.
+            environments.remove("GEM_HOME");
+            environments.remove("GEM_PATH");
 
-        // Set the RubyGems host for sure.
-        environments.put("RUBYGEMS_HOST", this.getHost().get());
+            // JARS_LOCK, JARS_HOME, and JARS_SKIP are for "jar-dependencies".
+            // https://github.com/mkristian/jar-dependencies/wiki/Jars.lock#jarslock-filename
+            environments.remove("JARS_LOCK");
+            // https://github.com/mkristian/jar-dependencies/blob/0.4.0/Readme.md#configuration
+            environments.remove("JARS_HOME");
+            environments.put("JARS_SKIP", "true");
 
-        this.setEnvironment(environments);
+            // https://github.com/mkristian/jbundler/wiki/Configuration
+            environments.put("JBUNDLE_SKIP", "true");
 
-        super.exec();
+            // Set the RubyGems host for sure.
+            environments.put("RUBYGEMS_HOST", rubygemsHost);
+
+            javaExecSpec.setEnvironment(environments);
+        });
+        execResult.assertNormalExitValue();
 
         logger.lifecycle("Exec `gem push` finished successfully.");
     }
