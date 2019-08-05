@@ -117,7 +117,7 @@ abstract class GemPush extends DefaultTask {
         args.add("--verbose");
 
         final Configuration jrubyConfiguration = project.getConfigurations().detachedConfiguration();
-        final Dependency jrubyDependency = project.getDependencies().create(this.jruby);
+        final Dependency jrubyDependency = project.getDependencies().create(this.jruby.get());
         jrubyConfiguration.withDependencies(dependencies -> {
             dependencies.add(jrubyDependency);
         });
