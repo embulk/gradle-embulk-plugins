@@ -20,9 +20,11 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -31,6 +33,7 @@ import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.artifacts.maven.Conf2ScopeMapping;
 import org.gradle.api.artifacts.maven.Conf2ScopeMappingContainer;
+import org.gradle.api.logging.Logger;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.MavenPlugin;
 import org.gradle.api.tasks.JavaExec;
@@ -66,6 +69,8 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         this.replaceConf2ScopeMappings(project, runtimeConfiguration, flatRuntimeConfiguration);
 
         this.configureJarTask(project, extension);
+
+        this.warnIfRuntimeHasCompileOnlyDependencies(project, flatRuntimeConfiguration);
 
         this.configureGemTasks(project, extension, runtimeConfiguration);
     }
@@ -150,6 +155,44 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         });
     }
 
+    private void warnIfRuntimeHasCompileOnlyDependencies(
+            final Project originalProject,
+            final Configuration flatRuntimeConfiguration) {
+        originalProject.afterEvaluate(project -> {
+            final Configuration compileOnlyConfiguration = project.getConfigurations().getByName("compileOnly");
+
+            final Map<String, ResolvedDependency> compileOnlyDependencies = collectAllDependencies(compileOnlyConfiguration);
+            final Map<String, ResolvedDependency> flatRuntimeDependencies = collectAllDependencies(flatRuntimeConfiguration);
+
+            final Set<String> intersects = new HashSet<>();
+            intersects.addAll(flatRuntimeDependencies.keySet());
+            intersects.retainAll(compileOnlyDependencies.keySet());
+            if (!intersects.isEmpty()) {
+                final Logger logger = project.getLogger();
+
+                // Logging in the "error" loglevel to show the severity, but not to fail with GradleException.
+                logger.error(
+                        "============================================ WARNING ============================================\n"
+                        + "Following `runtime` dependencies are included also in `compileOnly` dependencies.\n"
+                        + "\n"
+                        + intersects.stream().map(key -> {
+                              final ResolvedDependency dependency = flatRuntimeDependencies.get(key);
+                              return "  [ \"" + dependency.getModule().toString() + "\" ]\n";
+                          }).collect(Collectors.joining(""))
+                        + "\n"
+                        + "  `compileOnly` dependencies are used to represent Embulk's core to be \"provided\" at runtime.\n"
+                        + "  They should be excluded from `compile` or `runtime` dependencies like the example below.\n"
+                        + "\n"
+                        + "  dependencies {\n"
+                        + "    compile(\"org.glassfish.jersey.core:jersey-client:2.25.1\") {\n"
+                        + "      exclude group: \"javax.inject\", module: \"javax.inject\"\n"
+                        + "    }\n"
+                        + "  }\n"
+                        + "=================================================================================================");
+            }
+        });
+    }
+
     private void configureGemTasks(
             final Project originalProject,
             final EmbulkPluginExtension extension,
@@ -222,6 +265,17 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         else {
             return mavenVersion;
         }
+    }
+
+    private static Map<String, ResolvedDependency> collectAllDependencies(final Configuration configuration) {
+        final HashMap<String, ResolvedDependency> allDependencies = new HashMap<>();
+
+        final Set<ResolvedDependency> firstLevel = configuration.getResolvedConfiguration().getFirstLevelModuleDependencies();
+        for (final ResolvedDependency dependency : firstLevel) {
+            recurseAllDependencies(dependency, allDependencies);
+        }
+
+        return Collections.unmodifiableMap(allDependencies);
     }
 
     /**
