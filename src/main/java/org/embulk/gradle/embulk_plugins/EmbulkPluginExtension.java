@@ -35,7 +35,6 @@ import org.gradle.api.provider.Property;
  *     mainClass = "org.embulk.input.example.ExampleInputPlugin"
  *     category = "input"
  *     type = "example"
- *     flatRuntimeConfiguration = "embulkPluginFlatRuntime"  // Not recommended to configure it.
  * }}</pre>
  */
 public class EmbulkPluginExtension {
@@ -46,8 +45,6 @@ public class EmbulkPluginExtension {
         this.mainClass = objectFactory.property(String.class);
         this.category = objectFactory.property(String.class);
         this.type = objectFactory.property(String.class);
-        this.flatRuntimeConfiguration = objectFactory.property(String.class);
-        this.flatRuntimeConfiguration.set("embulkPluginFlatRuntime");
     }
 
     public Property<String> getMainClass() {
@@ -60,10 +57,6 @@ public class EmbulkPluginExtension {
 
     public Property<String> getType() {
         return this.type;
-    }
-
-    public Property<String> getFlatRuntimeConfiguration() {
-        return this.flatRuntimeConfiguration;
     }
 
     void checkValidity() {
@@ -109,5 +102,4 @@ public class EmbulkPluginExtension {
     private final Property<String> mainClass;
     private final Property<String> category;
     private final Property<String> type;
-    private final Property<String> flatRuntimeConfiguration;
 }

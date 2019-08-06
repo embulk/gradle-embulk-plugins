@@ -43,7 +43,8 @@ embulkPlugin {
     type = "example"
 }
 
-// You can use any uploading mechanism as you like (e.g. `maven-publish`).
+// This Gradle plugin's POM dependency modification works only for Upload tasks.
+// Note that it does not work with "maven-publish" yet.
 uploadArchives {
     repositories {
         mavenDeployer {
