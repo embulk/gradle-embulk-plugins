@@ -17,6 +17,7 @@
 package org.embulk.gradle.embulk_plugins;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.Collectors;
@@ -77,18 +78,18 @@ abstract class GemPush extends DefaultTask {
         final Logger logger = project.getLogger();
 
         if (inputChanges.isIncremental()) {
-            logger.lifecycle("Executing incrementally.");
+            logger.info("Executing incrementally.");
         } else {
-            logger.lifecycle("Executing non-incrementally.");
+            logger.info("Executing non-incrementally.");
         }
 
         final ArrayList<File> gemFiles = new ArrayList<>();
         for (final FileChange change : inputChanges.getFileChanges(this.getGem())) {
             if (change.getFileType() == FileType.DIRECTORY) {
-                throw new GradleException("Unexpected: directory is input for `gemPush`.");
+                throw new GradleException("Unexpected with a directory for \"gemPush\".");
             }
             if (change.getChangeType() == ChangeType.REMOVED) {
-                throw new GradleException("Unexpected: file removal is input for `gemPush`.");
+                throw new GradleException("Unexpected with file removal for \"gemPush\".");
             }
             gemFiles.add(change.getFile());
         }
@@ -98,7 +99,7 @@ abstract class GemPush extends DefaultTask {
             return;
         }
         if (gemFiles.size() > 1) {
-            throw new GradleException("Unexpected: multiple files are input for `gemPush`.");
+            throw new GradleException("Unexpected with multiple files for \"gemPush\".");
         }
 
         final File archiveFile = gemFiles.get(0);
@@ -116,6 +117,8 @@ abstract class GemPush extends DefaultTask {
         args.add(archiveFile.toString());
         args.add("--verbose");
 
+        final Path workingDirectory = archiveFile.toPath().getParent();
+
         final Configuration jrubyConfiguration = project.getConfigurations().detachedConfiguration();
         final Dependency jrubyDependency = project.getDependencies().create(this.jruby.get());
         jrubyConfiguration.withDependencies(dependencies -> {
@@ -124,13 +127,15 @@ abstract class GemPush extends DefaultTask {
 
         final FileCollection jrubyFiles = (FileCollection) jrubyConfiguration;
         if (logger.isLifecycleEnabled()) {
-            logger.lifecycle(args.stream().collect(Collectors.joining(" ", "Exec: `java org.jruby.Main ", "`")));
             logger.lifecycle(
-                    jrubyFiles.getFiles().stream().map(File::toString).collect(Collectors.joining("],[", "Classpath: [", "]")));
+                    "Executing: `java org.jruby.Main " + String.join(" ", args) + "`\n"
+                    + "    with working directory at: " + workingDirectory.toString() + "\n"
+                    + "    with classpath: "
+                    + jrubyFiles.getFiles().stream().map(File::getPath).collect(Collectors.joining(", ", "[ ", " ]")));
         }
 
         final ExecResult execResult = project.javaexec(javaExecSpec -> {
-            javaExecSpec.setWorkingDir(archiveFile.toPath().getParent().toFile());
+            javaExecSpec.setWorkingDir(workingDirectory.toFile());
             javaExecSpec.setClasspath(jrubyFiles);
             javaExecSpec.setMain("org.jruby.Main");
             javaExecSpec.setArgs(args);
@@ -162,7 +167,7 @@ abstract class GemPush extends DefaultTask {
         });
         execResult.assertNormalExitValue();
 
-        logger.lifecycle("Exec `gem push` finished successfully.");
+        logger.lifecycle("Executing `gem push` finished successfully.");
     }
 
     public Property<String> getHost() {

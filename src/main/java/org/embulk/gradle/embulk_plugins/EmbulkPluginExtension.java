@@ -66,23 +66,28 @@ public class EmbulkPluginExtension {
         return this.flatRuntimeConfiguration;
     }
 
-    public void checkValidity() {
+    void checkValidity() {
         final ArrayList<String> errors = new ArrayList<>();
         if ((!this.mainClass.isPresent()) || this.mainClass.get().isEmpty()) {
-            errors.add("'mainClass' must be available in 'embulkPlugin'.");
+            errors.add("\"mainClass\"");
         }
         if ((!this.category.isPresent()) || this.category.get().isEmpty()) {
-            errors.add("'category' must be available in 'embulkPlugin'.");
-        }
-        if (!CATEGORIES.contains(this.category.get())) {
-            errors.add("'category' must be one of: " + String.join(", ", CATEGORIES_ARRAY));
+            errors.add("\"category\"");
         }
         if ((!this.type.isPresent()) || this.type.get().isEmpty()) {
-            errors.add("'type' must be available in 'embulkPlugin'.");
+            errors.add("\"type\"");
         }
 
         if (!errors.isEmpty()) {
-            throw new GradleException("[gradle-embulk-plugins] " + String.join(" ", errors));
+            throw new GradleException(
+                    "Failed to configure \"embulkPlugin\" because of insufficient settings: [ "
+                    + String.join(", ", errors) + " ]");
+        }
+
+        if (!CATEGORIES.contains(this.category.get())) {
+            throw new GradleException(
+                    "Failed to configure \"embulkPlugin\" because \"category\" must be one of: [ "
+                    + String.join(", ", CATEGORIES_ARRAY) + " ]");
         }
     }
 

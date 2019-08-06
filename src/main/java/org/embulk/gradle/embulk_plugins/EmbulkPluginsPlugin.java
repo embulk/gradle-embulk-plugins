@@ -127,7 +127,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             final Configuration flatRuntimeConfiguration) {
         final Object conf2ScopeMappingsObject = project.property("conf2ScopeMappings");
         if (!(conf2ScopeMappingsObject instanceof Conf2ScopeMappingContainer)) {
-            throw new GradleException("Property 'conf2ScopeMappings' is not properly configured.");
+            throw new GradleException("Unexpected with \"conf2ScopeMappings\" not configured properly.");
         }
         final Conf2ScopeMappingContainer conf2ScopeMappingContainer = (Conf2ScopeMappingContainer) conf2ScopeMappingsObject;
         final Map<Configuration, Conf2ScopeMapping> conf2ScopeMappings = conf2ScopeMappingContainer.getMappings();
@@ -173,15 +173,15 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                 // Logging in the "error" loglevel to show the severity, but not to fail with GradleException.
                 logger.error(
                         "============================================ WARNING ============================================\n"
-                        + "Following `runtime` dependencies are included also in `compileOnly` dependencies.\n"
+                        + "Following \"runtime\" dependencies are included also in \"compileOnly\" dependencies.\n"
                         + "\n"
                         + intersects.stream().map(key -> {
                               final ResolvedDependency dependency = flatRuntimeDependencies.get(key);
-                              return "  [ \"" + dependency.getModule().toString() + "\" ]\n";
+                              return "  \"" + dependency.getModule().toString() + "\"\n";
                           }).collect(Collectors.joining(""))
                         + "\n"
-                        + "  `compileOnly` dependencies are used to represent Embulk's core to be \"provided\" at runtime.\n"
-                        + "  They should be excluded from `compile` or `runtime` dependencies like the example below.\n"
+                        + "  \"compileOnly\" dependencies are used to represent Embulk's core to be \"provided\" at runtime.\n"
+                        + "  They should be excluded from \"compile\" or \"runtime\" dependencies like the example below.\n"
                         + "\n"
                         + "  dependencies {\n"
                         + "    compile(\"org.glassfish.jersey.core:jersey-client:2.25.1\") {\n"
@@ -223,12 +223,6 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                     task.getArchiveVersion().set(buildGemVersionFromMavenVersion(project.getVersion().toString()));
                 }
 
-                if (!task.getGemDescription().isPresent() && project.getDescription() != null) {
-                    // project.getDescription() may return null.
-                    // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/Project.html#getDescription--
-                    task.getGemDescription().set(project.getDescription());
-                }
-
                 task.getDestinationDirectory().set(((File) project.property("buildDir")).toPath().resolve("gems").toFile());
                 task.from(runtimeConfiguration, copySpec -> {
                     copySpec.into("classpath");
@@ -250,7 +244,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         if (mavenVersion.contains("-")) {
             final List<String> versionTokens = Arrays.asList(mavenVersion.split("-"));
             if (versionTokens.size() != 2) {
-                throw new GradleException("'version' not available for Gem-style versioning: " + mavenVersion);
+                throw new GradleException("Failed to convert the version \"" + mavenVersion + "\" to Gem-style.");
             }
             return versionTokens.get(0) + '.' + versionTokens.get(1).toLowerCase();
         }

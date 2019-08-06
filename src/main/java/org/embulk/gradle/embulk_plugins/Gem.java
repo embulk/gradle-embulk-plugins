@@ -80,7 +80,6 @@ class Gem extends AbstractArchiveTask {
         this.authors = objectFactory.listProperty(String.class);
         this.summary = objectFactory.property(String.class);
 
-        this.gemDescription = objectFactory.property(String.class);
         this.email = objectFactory.listProperty(String.class);
         this.homepage = objectFactory.property(String.class);
         this.licenses = objectFactory.listProperty(String.class);
@@ -104,6 +103,9 @@ class Gem extends AbstractArchiveTask {
         // Copying the source files into the working directory. Note that the Gem task should not have top-level `into`
         // because AbstractArchiveTask#into represents a destination directory *inside* the archive for the files.
         // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/tasks/bundling/AbstractArchiveTask.html#into-java.lang.Object-
+        //
+        // TODO: Replace it with creating files in `GemCopyAction` (See #37)
+        // https://github.com/embulk/gradle-embulk-plugins/issues/37
         project.copy(copySpec -> {
             copySpec.with(this);
             copySpec.into(this.getWorkingDir(project).toFile());
@@ -118,6 +120,8 @@ class Gem extends AbstractArchiveTask {
         args.add("build");
         args.add(project.getName() + ".gemspec");
 
+        final Path workingDirectory = this.getWorkingDir(project);
+
         final Configuration jrubyConfiguration = project.getConfigurations().detachedConfiguration();
         final Dependency jrubyDependency = project.getDependencies().create(this.jruby.get());
         jrubyConfiguration.withDependencies(dependencies -> {
@@ -126,16 +130,20 @@ class Gem extends AbstractArchiveTask {
 
         final FileCollection jrubyFiles = (FileCollection) jrubyConfiguration;
         if (logger.isLifecycleEnabled()) {
-            logger.lifecycle(args.stream().collect(Collectors.joining(" ", "Exec: `java org.jruby.Main ", "`")));
             logger.lifecycle(
-                    jrubyFiles.getFiles().stream().map(File::toString).collect(Collectors.joining("],[", "Classpath: [", "]")));
+                    "Executing: `java org.jruby.Main " + String.join(" ", args) + "`\n"
+                    + "    with working directory at: " + workingDirectory.toString() + "\n"
+                    + "    with classpath: "
+                    + jrubyFiles.getFiles().stream().map(File::getPath).collect(Collectors.joining(", ", "[ ", " ]")));
         }
 
         final ExecResult execResult = project.javaexec(javaExecSpec -> {
-            javaExecSpec.setWorkingDir(getWorkingDir(project).toFile());
+            javaExecSpec.setWorkingDir(workingDirectory.toFile());
             javaExecSpec.setClasspath(jrubyFiles);
             javaExecSpec.setMain("org.jruby.Main");
             javaExecSpec.setArgs(args);
+
+            javaExecSpec.setIgnoreExitValue(false);
 
             final HashMap<String, Object> environments = new HashMap<>();
             environments.putAll(System.getenv());
@@ -159,7 +167,7 @@ class Gem extends AbstractArchiveTask {
         });
         execResult.assertNormalExitValue();
 
-        logger.lifecycle("Exec `gem build` finished successfully.");
+        logger.lifecycle("Executing `gem build` finished successfully.");
 
         return new GemCopyAction(
                 this.getWorkingDir(project).resolve(project.getName() + "-" + this.getArchiveVersion().get() + "-java.gem"),
@@ -172,10 +180,6 @@ class Gem extends AbstractArchiveTask {
 
     public Property<String> getSummary() {
         return this.summary;
-    }
-
-    public Property<String> getGemDescription() {
-        return this.gemDescription;
     }
 
     public ListProperty<String> getEmail() {
@@ -202,35 +206,36 @@ class Gem extends AbstractArchiveTask {
     }
 
     private void checkValidity(final Project project, final Logger logger) {
-        final ArrayList<String> errors = new ArrayList<>();
-        if ((!this.authors.isPresent()) || this.authors.get().isEmpty()) {
-            errors.add("'authors' must not be empty in 'gem'.");
-        }
-        if ((!this.getArchiveBaseName().isPresent()) || this.getArchiveBaseName().get().isEmpty()) {
-            errors.add("'archiveBaseName' must be available of 'gem'.");
-        }
-        if ((!this.summary.isPresent()) || this.summary.get().isEmpty()) {
-            errors.add("'summary' must be available in 'gem'.");
-        }
-        if ((!this.getArchiveVersion().isPresent()) || this.getArchiveVersion().get().isEmpty()) {
-            errors.add("'archiveVersion' must be available in 'gem'.");
-        }
-
-        if (!errors.isEmpty()) {
-            throw new GradleException("[gradle-embulk-plugins] " + String.join(" ", errors));
-        }
-
-        if (!this.gemDescription.isPresent()) {
-            logger.warn("[gradle-embulk-plugins] `project.description` or `gemDescription` in `gem` is recommended.");
+        if (project.getDescription() == null || project.getDescription().isEmpty()) {
+            logger.warn("Recommended to configure \"project.description\".");
         }
         if ((!this.email.isPresent()) || this.email.get().isEmpty()) {
-            logger.warn("[gradle-embulk-plugins] `email` is recommended in `gem`. For example: `email = [ \"foo@example.com\" ]");
+            logger.warn("Recommended to configure \"email\". For example: `email = [ \"foo@example.com\" ]`");
         }
         if (!this.homepage.isPresent()) {
-            logger.warn("[gradle-embulk-plugins] `homepage` is recommended in `gem`. For example: `homepage = \"https://github.com/example/embulk-input-example\"");
+            logger.warn("Recommended to configure \"homepage\". For example: `homepage = \"https://example.com\"`");
         }
-        if ((!this.licenses.isPresent()) || this.licenses.get().isEmpty()) {
-            logger.warn("[gradle-embulk-plugins] `licenses` is recommended in `gem`. For example: `licenses = [ \"Apache-2.0\" ]");
+        if (!this.licenses.isPresent()) {
+            logger.warn("Recommended to configure \"licenses\". For example: `licenses = [ \"Apache-2.0\" ]`");
+        }
+
+        final ArrayList<String> errors = new ArrayList<>();
+        if ((!this.getArchiveBaseName().isPresent()) || this.getArchiveBaseName().get().isEmpty()) {
+            errors.add("\"archiveBaseName\"");
+        }
+        if ((!this.getArchiveVersion().isPresent()) || this.getArchiveVersion().get().isEmpty()) {
+            errors.add("\"archiveVersion\"");
+        }
+        if ((!this.authors.isPresent()) || this.authors.get().isEmpty()) {
+            errors.add("\"authors\"");
+        }
+        if ((!this.summary.isPresent()) || this.summary.get().isEmpty()) {
+            errors.add("\"summary\"");
+        }
+        if (!errors.isEmpty()) {
+            throw new GradleException(
+                    "Failed to configure \"gem\" because of insufficient settings: [ "
+                    + String.join(", ", errors) + " ]");
         }
     }
 
@@ -270,7 +275,7 @@ class Gem extends AbstractArchiveTask {
                 }
             });
         } catch (final IOException ex) {
-            throw new GradleException("Could not clean the target directory: " + root.toString(), ex);
+            throw new GradleException("Failed to clean the target directory: " + root.toString(), ex);
         }
     }
 
@@ -279,7 +284,7 @@ class Gem extends AbstractArchiveTask {
         try {
             Files.createDirectories(dirPath);
         } catch (final IOException ex) {
-            throw new GradleException("Could not create: " + dirPath.toString(), ex);
+            throw new GradleException("Failed to create the directory: " + dirPath.toString(), ex);
         }
 
         final Path filePath = dirPath.resolve(this.embulkPluginType.get() + ".rb");
@@ -288,7 +293,7 @@ class Gem extends AbstractArchiveTask {
             writer.println("  \"" + this.embulkPluginType.get() + "\", \"" + this.embulkPluginMainClass.get() + "\",");
             writer.println("  File.expand_path(\"../../../../classpath\", __FILE__))");
         } catch (final IOException ex) {
-            throw new GradleException("Could not create and write: " + filePath.toString(), ex);
+            throw new GradleException("Failed to create/write to the bootstrap Ruby file: " + filePath.toString(), ex);
         }
     }
 
@@ -305,7 +310,7 @@ class Gem extends AbstractArchiveTask {
                 }
             });
         } catch (final IOException ex) {
-            throw new GradleException("Could not list files in the directory: " + root.toString(), ex);
+            throw new GradleException("Failed to list files in the directory: " + root.toString(), ex);
         }
 
         return Collections.unmodifiableList(files);
@@ -314,9 +319,9 @@ class Gem extends AbstractArchiveTask {
     private void createGemspec(final Project project, final List<Path> files) {
         final Path gemspecPath = this.getWorkingDir(project).resolve(project.getName() + ".gemspec");
         try (final PrintWriter writer = new PrintWriter(Files.newOutputStream(gemspecPath, StandardOpenOption.CREATE_NEW))) {
-            this.dump(writer, files);
+            this.dump(writer, project, files);
         } catch (final IOException ex) {
-            throw new GradleException("Could not create and write: " + gemspecPath.toString(), ex);
+            throw new GradleException("Failed to create/write to the gemspec file: " + gemspecPath.toString(), ex);
         }
     }
 
@@ -326,7 +331,7 @@ class Gem extends AbstractArchiveTask {
 
     // https://guides.rubygems.org/specification-reference/
     // https://maven.apache.org/ref/3.6.0/maven-model/apidocs/org/apache/maven/model/Model.html
-    private void dump(final PrintWriter writer, final List<Path> files) {
+    private void dump(final PrintWriter writer, final Project project, final List<Path> files) {
         writer.println("Gem::Specification.new do |spec|");
 
         // REQUIRED GEMSPEC ATTRIBUTES
@@ -341,8 +346,8 @@ class Gem extends AbstractArchiveTask {
         writer.println("    spec.version       = \"" + this.getArchiveVersion().get() + "\"");
 
         // RECOMMENDED GEMSPEC ATTRIBUTES
-        if (this.gemDescription.isPresent()) {
-            writer.println("    spec.description   = \"" + this.gemDescription.get() + "\"");
+        if (project.getDescription() != null && !project.getDescription().isEmpty()) {
+            writer.println("    spec.description   = \"" + project.getDescription() + "\"");
         }
         if (this.email.isPresent() && !this.email.get().isEmpty()) {
             writer.println("    spec.email         = [" + renderList(this.email.get()) + "]");
@@ -391,7 +396,6 @@ class Gem extends AbstractArchiveTask {
     private final ListProperty<String> authors;
     private final Property<String> summary;
 
-    private final Property<String> gemDescription;
     private final ListProperty<String> email;
     private final Property<String> homepage;
     // The singular `license` is to be substituted by `licenses`.

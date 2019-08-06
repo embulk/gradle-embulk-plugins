@@ -57,13 +57,14 @@ uploadArchives {
 // Note that `gem` is a type of archive tasks such as `jar` and `zip`, with some additional properties to fulfill `.gemspec`.
 //
 // gem {
-//     from("LICENSE.txt")
+//     from("LICENSE")  // Optional -- if you need other files in the gem.
 //     authors = [ "Somebody Somewhere" ]
 //     email = [ "somebody@example.com" ]
+//     // "description" of the gem is copied from "description" of your Gradle project.
 //     summary = "Example input plugin for Embulk"
 //     homepage = "https://example.com"
 //     licenses = [ "Apache-2.0" ]
-//     metadata = [
+//     metadata = [  // Optional -- if you need metadata in the gem.
 //         "foo": "bar"
 //     ]
 // }
@@ -227,13 +228,14 @@ uploadArchives {
     * Configure the `gem` task. Note that `gem` is a type of archive tasks such as `jar` and `zip`, with some additional properties to fulfill `.gemspec`:
       ```
       gem {
-          from("LICENSE")
+          from("LICENSE")  // Optional -- if you need other files in the gem.
           authors = [ "Somebody Somewhere" ]
           email = [ "somebody@example.com" ]
+          // "description" of the gem is copied from "description" of your Gradle project.
           summary = "Example input plugin for Embulk"
           homepage = "https://example.com"
           licenses = [ "Apache-2.0" ]
-          metadata = [
+          metadata = [  // Optional -- if you need metadata in the gem.
               "foo": "bar"
           ]
       }
@@ -246,3 +248,15 @@ uploadArchives {
       ```
     * Note that `rubygems` 2.7.9 embedded in JRuby 9.2.7.0 (the latest as of July 2019) does not support multi-factor authentication (OTP) yet. You'll need to set your authentication level to "UI only" when you push your gem into https://rubygems.org.
         * https://guides.rubygems.org/setting-up-multifactor-authentication/
+
+What this Gradle plugin does?
+------------------------------
+
+This Gradle plugin does the following things for `jar` in addition to a normal Gradle build:
+
+* Add some Embulk-specific attributes in generated JAR's manifest.
+* Bring its transitive dependencies up flattened to the first level as `runtime`.
+    * It is required in Embulk plugins because Embulk intentionally does not load transitive dependencies.
+* Check that dependencies of `compileOnly` are not included in `runtime`.
+
+And, it additionally provides some features for traditional `gem`-based Embulk plugins.
