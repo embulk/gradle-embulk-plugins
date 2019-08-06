@@ -78,6 +78,12 @@ uploadArchives {
 // }
 ```
 
+### Dependency locking
+
+The dependency configuration `embulkPluginRuntime`, which is added by this Gradle plugin for flattened dependencies, has [dependency locking](https://docs.gradle.org/current/userguide/dependency_locking.html) activated by default.
+
+In the beginning of your Embulk plugin project, it is recommended for you to run `./gradlew dependencies --write-locks`, and add generated `gradle/dependency-locks/embulkPluginRuntime.lockfile` in your version control system. Your Embulk plugin project will have more sensitive checks on its dependency libraries, then.
+
 ### How to migrate old-style `build.gradle` of your Embulk plugins
 
 1. Upgrade your Gradle wrapper to `5.5.1+`.
