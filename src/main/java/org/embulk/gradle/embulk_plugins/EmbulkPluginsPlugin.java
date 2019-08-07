@@ -67,6 +67,10 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         // It must be a non-detached configuration to be mapped into Maven scopes by Conf2ScopeMapping.
         final Configuration alternativeRuntimeConfiguration = project.getConfigurations().maybeCreate("embulkPluginRuntime");
 
+        // The "embulkPluginRuntime" configuration has dependency locking activated by default.
+        // https://docs.gradle.org/current/userguide/dependency_locking.html
+        alternativeRuntimeConfiguration.getResolutionStrategy().activateDependencyLocking();
+
         configureAlternativeRuntime(project, runtimeConfiguration, alternativeRuntimeConfiguration);
 
         // It must be configured before evaluation (not in afterEvaluate).
@@ -74,6 +78,9 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
         project.afterEvaluate(projectAfterEvaluate -> {
             initializeAfterEvaluate(projectAfterEvaluate, runtimeConfiguration, alternativeRuntimeConfiguration);
+
+            // Configuration#getResolvedConfiguration here so that the dependency lock state is checked.
+            alternativeRuntimeConfiguration.getResolvedConfiguration();
         });
     }
 
