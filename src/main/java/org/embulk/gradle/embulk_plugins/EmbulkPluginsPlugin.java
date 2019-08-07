@@ -61,16 +61,15 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         final Configuration runtimeConfiguration = project.getConfigurations().getByName("runtime");
 
         // It must be a non-detached configuration to be mapped into Maven scopes by Conf2ScopeMapping.
-        final Configuration flatRuntimeConfiguration =
-                project.getConfigurations().maybeCreate(extension.getFlatRuntimeConfiguration().get());
+        final Configuration alternativeRuntimeConfiguration = project.getConfigurations().maybeCreate("embulkPluginRuntime");
 
-        this.configureFlatRuntime(project, runtimeConfiguration, flatRuntimeConfiguration);
+        this.configureAlternativeRuntime(project, runtimeConfiguration, alternativeRuntimeConfiguration);
 
-        this.replaceConf2ScopeMappings(project, runtimeConfiguration, flatRuntimeConfiguration);
+        this.replaceConf2ScopeMappings(project, runtimeConfiguration, alternativeRuntimeConfiguration);
 
         this.configureJarTask(project, extension);
 
-        this.warnIfRuntimeHasCompileOnlyDependencies(project, flatRuntimeConfiguration);
+        this.warnIfRuntimeHasCompileOnlyDependencies(project, alternativeRuntimeConfiguration);
 
         this.configureGemTasks(project, extension, runtimeConfiguration);
     }
@@ -83,13 +82,13 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
     }
 
     /**
-     * Configures the flat runtime configuration with flattened dependencies.
+     * Configures the alternative (flattened) runtime configuration with flattened dependencies.
      */
-    private void configureFlatRuntime(
+    private void configureAlternativeRuntime(
             final Project project,
             final Configuration runtimeConfiguration,
-            final Configuration flatRuntimeConfiguration) {
-        flatRuntimeConfiguration.withDependencies(dependencies -> {
+            final Configuration alternativeRuntimeConfiguration) {
+        alternativeRuntimeConfiguration.withDependencies(dependencies -> {
                 final Map<String, ResolvedDependency> allDependencies = new HashMap<>();
                 final Set<ResolvedDependency> firstLevelDependencies =
                         runtimeConfiguration.getResolvedConfiguration().getFirstLevelModuleDependencies();
@@ -108,8 +107,8 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
     }
 
     /**
-     * Replaces {@code "runtime"} to the flat runtime configuration in Gradle's {@code conf2ScopeMappings}
-     * so that the flat runtime configuration is used to generate pom.xml, instead of the standard
+     * Replaces {@code "runtime"} to the alternative runtime configuration in Gradle's {@code conf2ScopeMappings}
+     * so that the alternative runtime configuration is used to generate pom.xml, instead of the standard
      * {@code "runtime"} configuration.
      *
      * <p>The mappings correspond Gradle configurations (e.g. {@code "compile"}, {@code "compileOnly"}) to
@@ -118,13 +117,16 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
      * <p>See {@code MavenPlugin.java} and {@code DefaultPomDependenciesConverter.java} for how Gradle is
      * converting Gradle dependencies to Maven POM dependencies.
      *
+     * <p>Note that {@code conf2ScopeMappings} must be configured before evaluation (not in {@code afterEvaluate}).
+     * See <a href="https://github.com/gradle/gradle/issues/1373">https://github.com/gradle/gradle/issues/1373</a>.
+     *
      * @see <a href="https://github.com/gradle/gradle/blob/v5.5.1/subprojects/maven/src/main/java/org/gradle/api/publication/maven/internal/pom/DefaultPomDependenciesConverter.java">DefaultPomDependenciesConverter</a>
      * @see <a href="https://github.com/gradle/gradle/blob/v5.5.1/subprojects/maven/src/main/java/org/gradle/api/plugins/MavenPlugin.java#L171-L184">MavenPlugin#configureJavaScopeMappings</a>
      */
     private void replaceConf2ScopeMappings(
             final Project project,
             final Configuration runtimeConfiguration,
-            final Configuration flatRuntimeConfiguration) {
+            final Configuration alternativeRuntimeConfiguration) {
         final Object conf2ScopeMappingsObject = project.property("conf2ScopeMappings");
         if (!(conf2ScopeMappingsObject instanceof Conf2ScopeMappingContainer)) {
             throw new GradleException("Unexpected with \"conf2ScopeMappings\" not configured properly.");
@@ -133,7 +135,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         final Map<Configuration, Conf2ScopeMapping> conf2ScopeMappings = conf2ScopeMappingContainer.getMappings();
         conf2ScopeMappings.remove(runtimeConfiguration);
         conf2ScopeMappingContainer.addMapping(MavenPlugin.RUNTIME_PRIORITY + 1,
-                                              flatRuntimeConfiguration,
+                                              alternativeRuntimeConfiguration,
                                               Conf2ScopeMappingContainer.RUNTIME);
     }
 
@@ -157,15 +159,17 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
     private void warnIfRuntimeHasCompileOnlyDependencies(
             final Project originalProject,
-            final Configuration flatRuntimeConfiguration) {
+            final Configuration alternativeRuntimeConfiguration) {
         originalProject.afterEvaluate(project -> {
             final Configuration compileOnlyConfiguration = project.getConfigurations().getByName("compileOnly");
 
-            final Map<String, ResolvedDependency> compileOnlyDependencies = collectAllDependencies(compileOnlyConfiguration);
-            final Map<String, ResolvedDependency> flatRuntimeDependencies = collectAllDependencies(flatRuntimeConfiguration);
+            final Map<String, ResolvedDependency> compileOnlyDependencies =
+                    collectAllDependencies(compileOnlyConfiguration);
+            final Map<String, ResolvedDependency> alternativeRuntimeDependencies =
+                    collectAllDependencies(alternativeRuntimeConfiguration);
 
             final Set<String> intersects = new HashSet<>();
-            intersects.addAll(flatRuntimeDependencies.keySet());
+            intersects.addAll(alternativeRuntimeDependencies.keySet());
             intersects.retainAll(compileOnlyDependencies.keySet());
             if (!intersects.isEmpty()) {
                 final Logger logger = project.getLogger();
@@ -176,7 +180,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                         + "Following \"runtime\" dependencies are included also in \"compileOnly\" dependencies.\n"
                         + "\n"
                         + intersects.stream().map(key -> {
-                              final ResolvedDependency dependency = flatRuntimeDependencies.get(key);
+                              final ResolvedDependency dependency = alternativeRuntimeDependencies.get(key);
                               return "  \"" + dependency.getModule().toString() + "\"\n";
                           }).collect(Collectors.joining(""))
                         + "\n"
