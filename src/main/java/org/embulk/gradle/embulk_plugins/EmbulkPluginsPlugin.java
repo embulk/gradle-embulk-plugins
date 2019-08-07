@@ -54,8 +54,12 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         project.getPluginManager().apply(MavenPlugin.class);
 
         final EmbulkPluginExtension extension = createExtension(project);
-        project.afterEvaluate(projectInner -> {
-            extension.checkValidity();
+
+        project.getTasks().create("gem", Gem.class, task -> {
+            task.dependsOn("jar");
+        });
+        project.getTasks().create("gemPush", GemPush.class, task -> {
+            task.dependsOn("gem");
         });
 
         final Configuration runtimeConfiguration = project.getConfigurations().getByName("runtime");
@@ -63,47 +67,61 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         // It must be a non-detached configuration to be mapped into Maven scopes by Conf2ScopeMapping.
         final Configuration alternativeRuntimeConfiguration = project.getConfigurations().maybeCreate("embulkPluginRuntime");
 
-        this.configureAlternativeRuntime(project, runtimeConfiguration, alternativeRuntimeConfiguration);
+        configureAlternativeRuntime(project, runtimeConfiguration, alternativeRuntimeConfiguration);
 
-        this.replaceConf2ScopeMappings(project, runtimeConfiguration, alternativeRuntimeConfiguration);
+        // It must be configured before evaluation (not in afterEvaluate).
+        replaceConf2ScopeMappings(project, runtimeConfiguration, alternativeRuntimeConfiguration);
 
-        this.configureJarTask(project, extension);
-
-        this.warnIfRuntimeHasCompileOnlyDependencies(project, alternativeRuntimeConfiguration);
-
-        this.configureGemTasks(project, extension, runtimeConfiguration);
+        project.afterEvaluate(projectAfterEvaluate -> {
+            initializeAfterEvaluate(projectAfterEvaluate, runtimeConfiguration, alternativeRuntimeConfiguration);
+        });
     }
 
-    private EmbulkPluginExtension createExtension(final Project project) {
+    private static EmbulkPluginExtension createExtension(final Project project) {
         return project.getExtensions().create(
                 "embulkPlugin",
                 EmbulkPluginExtension.class,
                 project);
     }
 
+    private static void initializeAfterEvaluate(
+            final Project project,
+            final Configuration runtimeConfiguration,
+            final Configuration alternativeRuntimeConfiguration) {
+        final EmbulkPluginExtension extension = project.getExtensions().getByType(EmbulkPluginExtension.class);
+
+        extension.checkValidity();
+
+        configureJarTask(project, extension);
+
+        warnIfRuntimeHasCompileOnlyDependencies(project, alternativeRuntimeConfiguration);
+
+        configureGemTasks(project, extension, runtimeConfiguration);
+    }
+
     /**
      * Configures the alternative (flattened) runtime configuration with flattened dependencies.
      */
-    private void configureAlternativeRuntime(
+    private static void configureAlternativeRuntime(
             final Project project,
             final Configuration runtimeConfiguration,
             final Configuration alternativeRuntimeConfiguration) {
         alternativeRuntimeConfiguration.withDependencies(dependencies -> {
-                final Map<String, ResolvedDependency> allDependencies = new HashMap<>();
-                final Set<ResolvedDependency> firstLevelDependencies =
-                        runtimeConfiguration.getResolvedConfiguration().getFirstLevelModuleDependencies();
-                for (final ResolvedDependency dependency : firstLevelDependencies) {
-                    recurseAllDependencies(dependency, allDependencies);
-                }
+            final Map<String, ResolvedDependency> allDependencies = new HashMap<>();
+            final Set<ResolvedDependency> firstLevelDependencies =
+                    runtimeConfiguration.getResolvedConfiguration().getFirstLevelModuleDependencies();
+            for (final ResolvedDependency dependency : firstLevelDependencies) {
+                recurseAllDependencies(dependency, allDependencies);
+            }
 
-                for (final ResolvedDependency dependency : allDependencies.values()) {
-                    final HashMap<String, String> notation = new HashMap<>();
-                    notation.put("group", dependency.getModuleGroup());
-                    notation.put("name", dependency.getModuleName());
-                    notation.put("version", dependency.getModuleVersion());
-                    dependencies.add(project.getDependencies().create(notation));
-                }
-            });
+            for (final ResolvedDependency dependency : allDependencies.values()) {
+                final HashMap<String, String> notation = new HashMap<>();
+                notation.put("group", dependency.getModuleGroup());
+                notation.put("name", dependency.getModuleName());
+                notation.put("version", dependency.getModuleVersion());
+                dependencies.add(project.getDependencies().create(notation));
+            }
+        });
     }
 
     /**
@@ -123,7 +141,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
      * @see <a href="https://github.com/gradle/gradle/blob/v5.5.1/subprojects/maven/src/main/java/org/gradle/api/publication/maven/internal/pom/DefaultPomDependenciesConverter.java">DefaultPomDependenciesConverter</a>
      * @see <a href="https://github.com/gradle/gradle/blob/v5.5.1/subprojects/maven/src/main/java/org/gradle/api/plugins/MavenPlugin.java#L171-L184">MavenPlugin#configureJavaScopeMappings</a>
      */
-    private void replaceConf2ScopeMappings(
+    private static void replaceConf2ScopeMappings(
             final Project project,
             final Configuration runtimeConfiguration,
             final Configuration alternativeRuntimeConfiguration) {
@@ -142,105 +160,91 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
     /**
      * Configures the standard {@code "jar"} task with required MANIFEST.
      */
-    private void configureJarTask(final Project originalProject, final EmbulkPluginExtension extension) {
-        originalProject.afterEvaluate(project -> {
-            project.getTasks().named("jar", Jar.class, jarTask -> {
-                jarTask.manifest(UpdateManifestAction.builder()
-                                 .add("Embulk-Plugin-Main-Class", extension.getMainClass().get())
-                                 .add("Embulk-Plugin-Category", extension.getCategory().get())
-                                 .add("Embulk-Plugin-Type", extension.getType().get())
-                                 .add("Embulk-Plugin-Spi-Version", "0")
-                                 .add("Implementation-Title", project.getName())
-                                 .add("Implementation-Version", project.getVersion().toString())
-                                 .build());
-            });
+    private static void configureJarTask(final Project project, final EmbulkPluginExtension extension) {
+        project.getTasks().named("jar", Jar.class, jarTask -> {
+            jarTask.manifest(UpdateManifestAction.builder()
+                             .add("Embulk-Plugin-Main-Class", extension.getMainClass().get())
+                             .add("Embulk-Plugin-Category", extension.getCategory().get())
+                             .add("Embulk-Plugin-Type", extension.getType().get())
+                             .add("Embulk-Plugin-Spi-Version", "0")
+                             .add("Implementation-Title", project.getName())
+                             .add("Implementation-Version", project.getVersion().toString())
+                             .build());
         });
     }
 
-    private void warnIfRuntimeHasCompileOnlyDependencies(
-            final Project originalProject,
+    private static void warnIfRuntimeHasCompileOnlyDependencies(
+            final Project project,
             final Configuration alternativeRuntimeConfiguration) {
-        originalProject.afterEvaluate(project -> {
-            final Configuration compileOnlyConfiguration = project.getConfigurations().getByName("compileOnly");
+        final Configuration compileOnlyConfiguration = project.getConfigurations().getByName("compileOnly");
 
-            final Map<String, ResolvedDependency> compileOnlyDependencies =
-                    collectAllDependencies(compileOnlyConfiguration);
-            final Map<String, ResolvedDependency> alternativeRuntimeDependencies =
-                    collectAllDependencies(alternativeRuntimeConfiguration);
+        final Map<String, ResolvedDependency> compileOnlyDependencies =
+                collectAllDependencies(compileOnlyConfiguration);
+        final Map<String, ResolvedDependency> alternativeRuntimeDependencies =
+                collectAllDependencies(alternativeRuntimeConfiguration);
 
-            final Set<String> intersects = new HashSet<>();
-            intersects.addAll(alternativeRuntimeDependencies.keySet());
-            intersects.retainAll(compileOnlyDependencies.keySet());
-            if (!intersects.isEmpty()) {
-                final Logger logger = project.getLogger();
+        final Set<String> intersects = new HashSet<>();
+        intersects.addAll(alternativeRuntimeDependencies.keySet());
+        intersects.retainAll(compileOnlyDependencies.keySet());
+        if (!intersects.isEmpty()) {
+            final Logger logger = project.getLogger();
 
-                // Logging in the "error" loglevel to show the severity, but not to fail with GradleException.
-                logger.error(
-                        "============================================ WARNING ============================================\n"
-                        + "Following \"runtime\" dependencies are included also in \"compileOnly\" dependencies.\n"
-                        + "\n"
-                        + intersects.stream().map(key -> {
-                              final ResolvedDependency dependency = alternativeRuntimeDependencies.get(key);
-                              return "  \"" + dependency.getModule().toString() + "\"\n";
-                          }).collect(Collectors.joining(""))
-                        + "\n"
-                        + "  \"compileOnly\" dependencies are used to represent Embulk's core to be \"provided\" at runtime.\n"
-                        + "  They should be excluded from \"compile\" or \"runtime\" dependencies like the example below.\n"
-                        + "\n"
-                        + "  dependencies {\n"
-                        + "    compile(\"org.glassfish.jersey.core:jersey-client:2.25.1\") {\n"
-                        + "      exclude group: \"javax.inject\", module: \"javax.inject\"\n"
-                        + "    }\n"
-                        + "  }\n"
-                        + "=================================================================================================");
-            }
-        });
+            // Logging in the "error" loglevel to show the severity, but not to fail with GradleException.
+            logger.error(
+                    "============================================ WARNING ============================================\n"
+                    + "Following \"runtime\" dependencies are included also in \"compileOnly\" dependencies.\n"
+                    + "\n"
+                    + intersects.stream().map(key -> {
+                          final ResolvedDependency dependency = alternativeRuntimeDependencies.get(key);
+                          return "  \"" + dependency.getModule().toString() + "\"\n";
+                      }).collect(Collectors.joining(""))
+                    + "\n"
+                    + "  \"compileOnly\" dependencies are used to represent Embulk's core to be \"provided\" at runtime.\n"
+                    + "  They should be excluded from \"compile\" or \"runtime\" dependencies like the example below.\n"
+                    + "\n"
+                    + "  dependencies {\n"
+                    + "    compile(\"org.glassfish.jersey.core:jersey-client:2.25.1\") {\n"
+                    + "      exclude group: \"javax.inject\", module: \"javax.inject\"\n"
+                    + "    }\n"
+                    + "  }\n"
+                    + "=================================================================================================");
+        }
     }
 
-    private void configureGemTasks(
-            final Project originalProject,
+    private static void configureGemTasks(
+            final Project project,
             final EmbulkPluginExtension extension,
             final Configuration runtimeConfiguration) {
-        originalProject.getTasks().create("gem", Gem.class, task -> {
-            task.dependsOn("jar");
+        final TaskProvider<Gem> gemTask = project.getTasks().named("gem", Gem.class, task -> {
+            task.setEmbulkPluginMainClass(extension.getMainClass().get());
+            task.setEmbulkPluginCategory(extension.getCategory().get());
+            task.setEmbulkPluginType(extension.getType().get());
+
+            if ((!task.getArchiveBaseName().isPresent())) {
+                // project.getName() never returns null.
+                // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/Project.html#getName--
+                task.getArchiveBaseName().set(project.getName());
+            }
+            // summary is kept empty -- mandatory.
+            if ((!task.getArchiveVersion().isPresent()) && (!project.getVersion().toString().equals("unspecified"))) {
+                // project.getVersion() never returns null.
+                // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/Project.html#getVersion--
+                task.getArchiveVersion().set(buildGemVersionFromMavenVersion(project.getVersion().toString()));
+            }
+
+            task.getDestinationDirectory().set(((File) project.property("buildDir")).toPath().resolve("gems").toFile());
+            task.from(runtimeConfiguration, copySpec -> {
+                copySpec.into("classpath");
+            });
+            task.from(((Jar) project.getTasks().getByName("jar")).getArchiveFile(), copySpec -> {
+                copySpec.into("classpath");
+            });
         });
 
-        originalProject.getTasks().create("gemPush", GemPush.class, task -> {
-            task.dependsOn("gem");
-        });
-
-        originalProject.afterEvaluate(project -> {
-            final TaskProvider<Gem> gemTask = project.getTasks().named("gem", Gem.class, task -> {
-                task.setEmbulkPluginMainClass(extension.getMainClass().get());
-                task.setEmbulkPluginCategory(extension.getCategory().get());
-                task.setEmbulkPluginType(extension.getType().get());
-
-                if ((!task.getArchiveBaseName().isPresent())) {
-                    // project.getName() never returns null.
-                    // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/Project.html#getName--
-                    task.getArchiveBaseName().set(project.getName());
-                }
-                // summary is kept empty -- mandatory.
-                if ((!task.getArchiveVersion().isPresent()) && (!project.getVersion().toString().equals("unspecified"))) {
-                    // project.getVersion() never returns null.
-                    // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/Project.html#getVersion--
-                    task.getArchiveVersion().set(buildGemVersionFromMavenVersion(project.getVersion().toString()));
-                }
-
-                task.getDestinationDirectory().set(((File) project.property("buildDir")).toPath().resolve("gems").toFile());
-                task.from(runtimeConfiguration, copySpec -> {
-                    copySpec.into("classpath");
-                });
-                task.from(((Jar) project.getTasks().getByName("jar")).getArchiveFile(), copySpec -> {
-                    copySpec.into("classpath");
-                });
-            });
-
-            project.getTasks().named("gemPush", GemPush.class, task -> {
-                if (!task.getGem().isPresent()) {
-                    task.getGem().set(gemTask.get().getArchiveFile());
-                }
-            });
+        project.getTasks().named("gemPush", GemPush.class, task -> {
+            if (!task.getGem().isPresent()) {
+                task.getGem().set(gemTask.get().getArchiveFile());
+            }
         });
     }
 
