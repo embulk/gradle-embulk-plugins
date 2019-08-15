@@ -1,12 +1,6 @@
 language: java
 jdk:
-  - oraclejdk8
+  - openjdk8
 
-# Travis CI is to be configured to build both pushed branches and pull requests.
+# Travis CI is to be configured to build only pushed branches, not pull requests.
 # See: https://travis-ci.org/embulk/gradle-embulk-plugins/settings
-#
-# A pushed branch triggers a build only if it's the master branch.
-# A pushed pull request always triggers a build.
-branches:
-  only:
-  - master
