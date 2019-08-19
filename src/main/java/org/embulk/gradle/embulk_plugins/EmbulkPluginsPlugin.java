@@ -33,6 +33,8 @@ import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.artifacts.maven.Conf2ScopeMapping;
 import org.gradle.api.artifacts.maven.Conf2ScopeMappingContainer;
+import org.gradle.api.component.AdhocComponentWithVariants;
+import org.gradle.api.component.SoftwareComponent;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.MavenPlugin;
@@ -72,6 +74,24 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         alternativeRuntimeConfiguration.getResolutionStrategy().activateDependencyLocking();
 
         configureAlternativeRuntime(project, runtimeConfiguration, alternativeRuntimeConfiguration);
+
+        // Configure "components.java" (SoftwareComponent used for "from components.java" in MavenPublication)
+        // to include "embulkPluginRuntime" as the "runtime" scope of Maven.
+        // https://docs.gradle.org/5.5.1/dsl/org.gradle.api.publish.maven.MavenPublication.html#N1C095
+        // https://github.com/gradle/gradle/blob/v5.5.1/subprojects/plugins/src/main/java/org/gradle/api/plugins/JavaPlugin.java#L347-L354
+        //
+        // This SoftwareComponent configuration is used to in maven-publish.
+        // https://github.com/gradle/gradle/blob/v5.5.1/subprojects/maven/src/main/java/org/gradle/api/publish/maven/internal/publication/DefaultMavenPublication.java#L344-L352
+        // https://github.com/gradle/gradle/blob/v5.5.1/subprojects/maven/src/main/java/org/gradle/api/publish/maven/internal/publication/DefaultMavenPublication.java#L266-L277
+        // https://github.com/gradle/gradle/blob/v5.5.1/subprojects/maven/src/main/java/org/gradle/api/publish/maven/internal/publication/DefaultMavenPublication.java#L354-L374
+        final SoftwareComponent component = project.getComponents().getByName("java");
+        if (component instanceof AdhocComponentWithVariants) {
+            ((AdhocComponentWithVariants) component).addVariantsFromConfiguration(alternativeRuntimeConfiguration, details -> {
+                details.mapToMavenScope("runtime");
+            });
+        } else {
+            throw new GradleException("Failed to configure components.java because it is not AdhocComponentWithVariants.");
+        }
 
         // It must be configured before evaluation (not in afterEvaluate).
         replaceConf2ScopeMappings(project, runtimeConfiguration, alternativeRuntimeConfiguration);

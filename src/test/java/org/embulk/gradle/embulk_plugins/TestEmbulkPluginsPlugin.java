@@ -47,7 +47,7 @@ import org.xml.sax.SAXException;
 
 class TestEmbulkPluginsPlugin {
     @Test
-    public void test(@TempDir Path tempDir) throws IOException {
+    public void testUpload(@TempDir Path tempDir) throws IOException {
         final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test1"));
         Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build.gradle"),
                    projectDir.resolve("build.gradle"));
@@ -57,6 +57,25 @@ class TestEmbulkPluginsPlugin {
 
         this.build(projectDir, "uploadArchives");
         final Path versionDir = projectDir.resolve("build/mavenLocal/org/embulk/input/test1/embulk-input-test1/0.2.5");
+        final Path jarPath = versionDir.resolve("embulk-input-test1-0.2.5.jar");
+        final Path pomPath = versionDir.resolve("embulk-input-test1-0.2.5.pom");
+        assertTrue(Files.exists(jarPath));
+        assertManifest(jarPath);
+        assertTrue(Files.exists(pomPath));
+        assertPom(pomPath);
+    }
+
+    @Test
+    public void testPublish(@TempDir Path tempDir) throws IOException {
+        final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test1"));
+        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build.gradle"),
+                   projectDir.resolve("build.gradle"));
+
+        this.build(projectDir, "jar");
+        assertTrue(Files.exists(projectDir.resolve("build/libs/embulk-input-test1-0.2.5.jar")));
+
+        this.build(projectDir, "publishEmbulkPluginMavenPublicationToMavenRepository");
+        final Path versionDir = projectDir.resolve("build/mavenPublishLocal/org/embulk/input/test1/embulk-input-test1/0.2.5");
         final Path jarPath = versionDir.resolve("embulk-input-test1-0.2.5.jar");
         final Path pomPath = versionDir.resolve("embulk-input-test1-0.2.5.pom");
         assertTrue(Files.exists(jarPath));
