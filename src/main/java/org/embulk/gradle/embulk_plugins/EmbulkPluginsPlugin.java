@@ -30,7 +30,10 @@ import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedDependency;
+import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.maven.Conf2ScopeMapping;
 import org.gradle.api.artifacts.maven.Conf2ScopeMappingContainer;
 import org.gradle.api.logging.Logger;
@@ -118,7 +121,25 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             final Set<ResolvedDependency> firstLevelDependencies =
                     runtimeConfiguration.getResolvedConfiguration().getFirstLevelModuleDependencies();
             for (final ResolvedDependency dependency : firstLevelDependencies) {
-                recurseAllDependencies(dependency, allDependencies);
+                if (dependency.getConfiguration().equals("runtimeElements")) {
+                    // The target project may contain a non-"group:module:version" dependency. A subproject, for example,
+                    // "compile project(':subproject-a')" should not be resolved as "group:module:version", nor be flattened.
+                    // See also: https://discuss.gradle.org/t/determining-external-vs-sub-project-dependencies/12321
+                    //
+                    // Such a dependency is under the configuration "runtimeElements".
+                    // https://docs.gradle.org/current/userguide/java_library_plugin.html#sec:java_library_configurations_graph
+                    for (final ResolvedArtifact artifact : dependency.getModuleArtifacts()) {
+                        // TODO: Consider nested subproject dependencies. See #54.
+                        final ComponentIdentifier componentIdentifier = artifact.getId().getComponentIdentifier();
+                        if (componentIdentifier instanceof ProjectComponentIdentifier) {
+                            final Project dependencyProject =
+                                    project.project(((ProjectComponentIdentifier) componentIdentifier).getProjectPath());
+                            dependencies.add(project.getDependencies().create(dependencyProject));
+                        }
+                    }
+                } else {
+                    recurseAllDependencies(dependency, allDependencies);
+                }
             }
 
             for (final ResolvedDependency dependency : allDependencies.values()) {
