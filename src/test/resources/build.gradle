@@ -1,6 +1,7 @@
 plugins {
     id "java"
     id "maven"
+    id "maven-publish"
     id "org.embulk.embulk-plugins"
 }
 
@@ -37,6 +38,19 @@ uploadArchives {
         mavenDeployer {
             repository(url: "file:${project.buildDir}/mavenLocal")
             snapshotRepository(url: "file:${project.buildDir}/mavenLocalSnapshot")
+        }
+    }
+}
+
+publishing {
+    publications {
+        embulkPluginMaven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url = "${project.buildDir}/mavenPublishLocal"
         }
     }
 }

@@ -11,7 +11,7 @@ plugins {
 
     // Once this Gradle plugin is applied, its transitive dependencies are automatically updated to be flattened.
     // The update affects the default `jar` task, and default Maven uploading mechanisms as well.
-    id "org.embulk.embulk-plugins" version "0.2.4"
+    id "org.embulk.embulk-plugins" version "0.2.5"
 }
 
 group = "com.example"
@@ -30,7 +30,7 @@ dependencies {
     // You'll need to exclude those transitive dependencies explicitly in that case.
     //
     // For example:
-    // compile("org.embulk.base.restclient:embulk-base-restclient:0.5.0") {
+    // compile("org.embulk.base.restclient:embulk-base-restclient:0.7.0") {
     //     exclude group: "org.embulk", module: "embulk-core"
     // }
 
@@ -43,13 +43,26 @@ embulkPlugin {
     type = "example"
 }
 
-// This Gradle plugin's POM dependency modification works only for Upload tasks.
-// Note that it does not work with "maven-publish" yet.
+// This Gradle plugin's POM dependency modification works for Upload tasks.
 uploadArchives {
     repositories {
         mavenDeployer {
             repository(url: "file:${project.buildDir}/mavenLocal")
             snapshotRepository(url: "file:${project.buildDir}/mavenLocalSnapshot")
+        }
+    }
+}
+
+// This Gradle plugin's POM dependency modification works for "maven-publish" tasks.
+publishing {
+    publications {
+        embulkPluginMaven(MavenPublication) {  // Publish it with "publishEmbulkPluginMavenPublicationToMavenRepository".
+            from components.java  // Must be "components.java". The dependency modification works only for it.
+        }
+    }
+    repositories {
+        maven {
+            url = "${project.buildDir}/mavenPublishLocal"
         }
     }
 }
@@ -106,7 +119,7 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
       ```
     * Take care that **other dependencies do not have transitive dependencies to `embulk-core` and its dependencies**. You'll need to exclude it explicitly those transitive dependencies explicitly in that case. For example:
       ```
-      compile("org.embulk.base.restclient:embulk-base-restclient:0.5.0") {
+      compile("org.embulk.base.restclient:embulk-base-restclient:0.7.0") {
           exclude group: "org.embulk", module: "embulk-core"
       }
       compile("org.glassfish.jersey.core:jersey-client:2.25.1") {
@@ -195,7 +208,7 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
     * Using the [plugins DSL](https://docs.gradle.org/current/userguide/plugins.html#sec:plugins_block):
       ```
       plugins {
-          id "org.embulk.embulk-plugins" version "0.2.4"
+          id "org.embulk.embulk-plugins" version "0.2.5"
       }
     * Using [legacy plugin application](https://docs.gradle.org/current/userguide/plugins.html#sec:old_plugin_application):
       ```
@@ -206,7 +219,7 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
           }
       }
       dependencies {
-          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.2.4"
+          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.2.5"
       }
 
       apply plugin: "org.embulk.embulk-plugins"
@@ -219,14 +232,30 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
         category = "input"
         type = "dummy"
     }
-9. Configure uploading the plugin JAR to the Maven repository where you want to upload.
-    * The standard `jar` task is updated to generate a JAR ready as an Embulk plugin. For example of `uploadArchives`:
+9. Configure publishing the plugin JAR to the Maven repository where you want to upload.
+    * The standard `jar` task is already reconfigured to generate a JAR ready as an Embulk plugin.
+    * Publishing example with `uploadArchives`:
     ```
     uploadArchives {
         repositories {
             mavenDeployer {
                 repository(url: "file:${project.buildDir}/mavenLocal")
                 snapshotRepository(url: "file:${project.buildDir}/mavenLocalSnapshot")
+            }
+        }
+    }
+    ```
+    * Publishing example with `maven-publish`:
+    ```
+    publishing {
+        publications {
+            embulkPluginMaven(MavenPublication) {  // Publish it with "publishEmbulkPluginMavenPublicationToMavenRepository".
+                from components.java  // Must be "components.java". The dependency modification works only for it.
+            }
+        }
+        repositories {
+            maven {
+                url = "${project.buildDir}/mavenPublishLocal"
             }
         }
     }
