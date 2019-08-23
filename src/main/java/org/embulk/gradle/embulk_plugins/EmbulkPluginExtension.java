@@ -59,7 +59,7 @@ public class EmbulkPluginExtension {
         return this.type;
     }
 
-    void checkValidity() {
+    boolean isValidEmbulkPluginDefined() {
         final ArrayList<String> errors = new ArrayList<>();
         if ((!this.mainClass.isPresent()) || this.mainClass.get().isEmpty()) {
             errors.add("\"mainClass\"");
@@ -71,17 +71,21 @@ public class EmbulkPluginExtension {
             errors.add("\"type\"");
         }
 
-        if (!errors.isEmpty()) {
-            throw new GradleException(
-                    "Failed to configure \"embulkPlugin\" because of insufficient settings: [ "
-                    + String.join(", ", errors) + " ]");
-        }
-
         if (!CATEGORIES.contains(this.category.get())) {
             throw new GradleException(
                     "Failed to configure \"embulkPlugin\" because \"category\" must be one of: [ "
                     + String.join(", ", CATEGORIES_ARRAY) + " ]");
         }
+
+        if (errors.isEmpty()) {
+            return true;
+        }
+
+        this.project.getLogger().lifecycle(
+                "The project \"{}\" is not configured for an Embulk plugin.", this.project.getPath());
+        this.project.getLogger().lifecycle(
+                "\"embulkPlugin { ... }\" is not fully configured. Insufficient setting(s): [ {} ]", String.join(", ", errors));
+        return false;
     }
 
     private static final String[] CATEGORIES_ARRAY = {
