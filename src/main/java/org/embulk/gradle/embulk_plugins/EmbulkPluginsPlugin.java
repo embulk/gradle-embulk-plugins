@@ -232,6 +232,9 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                 // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/Project.html#getName--
                 task.getArchiveBaseName().set(project.getName());
             }
+            if ((!task.getArchiveClassifier().isPresent()) || task.getArchiveClassifier().get().isEmpty()) {
+                task.getArchiveClassifier().set("java");
+            }
             // summary is kept empty -- mandatory.
             if ((!task.getArchiveVersion().isPresent()) && (!project.getVersion().toString().equals("unspecified"))) {
                 // project.getVersion() never returns null.

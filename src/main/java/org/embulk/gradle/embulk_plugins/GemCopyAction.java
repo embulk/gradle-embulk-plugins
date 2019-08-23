@@ -20,9 +20,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.gradle.api.GradleException;
+import org.gradle.api.Project;
 import org.gradle.api.internal.file.copy.CopyAction;
 import org.gradle.api.internal.file.copy.CopyActionProcessingStream;
 import org.gradle.api.file.RegularFile;
+import org.gradle.api.logging.Logger;
 import org.gradle.api.tasks.WorkResult;
 import org.gradle.api.tasks.WorkResults;
 import org.gradle.api.provider.Provider;
@@ -30,9 +32,11 @@ import org.gradle.api.provider.Provider;
 class GemCopyAction implements CopyAction {
     public GemCopyAction(
             final Path sourceGemFilePath,
-            final Provider<RegularFile> destinationGemFile) {
+            final Provider<RegularFile> destinationGemFile,
+            final Project project) {
         this.sourceGemFilePath = sourceGemFilePath;
         this.destinationGemFile = destinationGemFile;
+        this.project = project;
     }
 
     @Override
@@ -46,9 +50,16 @@ class GemCopyAction implements CopyAction {
         } catch (final IOException ex) {
             throw new GradleException("Failed to locate the generated gem file at: " + destinationGemFilePath.toString(), ex);
         }
+
+        this.project.getLogger().lifecycle(
+                "Moved {} to {}.",
+                project.getProjectDir().toPath().relativize(this.sourceGemFilePath),
+                project.getProjectDir().toPath().relativize(destinationGemFilePath));
+
         return WorkResults.didWork(true);
     }
 
     private final Path sourceGemFilePath;
     private final Provider<RegularFile> destinationGemFile;
+    private final Project project;
 }
