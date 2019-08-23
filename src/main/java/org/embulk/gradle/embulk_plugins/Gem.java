@@ -171,7 +171,8 @@ class Gem extends AbstractArchiveTask {
 
         return new GemCopyAction(
                 this.getWorkingDir(project).resolve(project.getName() + "-" + this.getArchiveVersion().get() + "-java.gem"),
-                this.getArchiveFile());
+                this.getArchiveFile(),
+                project);
     }
 
     public ListProperty<String> getAuthors() {
