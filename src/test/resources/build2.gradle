@@ -1,0 +1,58 @@
+plugins {
+    id "java"
+    id "maven"
+    id "maven-publish"
+    id "org.embulk.embulk-plugins"
+}
+
+group = "org.embulk.input.test2"
+archivesBaseName = "${project.name}"
+version = "0.1.9"
+description = "Embulk input plugin for testing 2"
+
+repositories {
+    jcenter()
+}
+
+sourceCompatibility = "1.8"
+targetCompatibility = "1.8"
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+}
+
+dependencies {
+    compileOnly "org.embulk:embulk-core:0.9.17"
+    compile("org.glassfish.jersey.core:jersey-client:2.25.1") {
+        exclude group: "javax.inject", module: "javax.inject"
+    }
+}
+
+embulkPlugin {
+    mainClass = "org.embulk.input.test1.Test1InputPlugin"
+    category = "input"
+    type = "test1"
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: "file:${project.buildDir}/mavenLocal")
+            snapshotRepository(url: "file:${project.buildDir}/mavenLocalSnapshot")
+        }
+    }
+}
+
+publishing {
+    publications {
+        embulkPluginMaven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url = "${project.buildDir}/mavenPublishLocal"
+        }
+    }
+}
