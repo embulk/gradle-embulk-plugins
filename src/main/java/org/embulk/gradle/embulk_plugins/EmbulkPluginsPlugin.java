@@ -136,6 +136,23 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             final Project project,
             final Configuration runtimeConfiguration,
             final Configuration alternativeRuntimeConfiguration) {
+        // The "embulkPluginRuntime" configuration do not need to be transitive, and must be non-transitive.
+        //
+        // It contains all transitive dependencies of "runtime" flattened. It does not need to be transitive, then.
+        // Moreover, setting it transitive troubles the warning shown by |warnIfRuntimeHasCompileOnlyDependencies|.
+        //
+        // The Embulk plugin developer may explicitly exclude some transitive dependencies as below :
+        //
+        //   dependencies {
+        //       compile("org.glassfish.jersey.core:jersey-client:2.25.1") {
+        //           exclude group: "javax.inject", module: "javax.inject"
+        //       }
+        //   }
+        //
+        // If "embulkPluginRuntime" is still transitive, it would finally contain "javax.inject:javax.inject".
+        // The behavior is unintended. So, "embulkPluginRuntime" must be non-transitive.
+        alternativeRuntimeConfiguration.setTransitive(false);
+
         alternativeRuntimeConfiguration.withDependencies(dependencies -> {
             final Map<String, ResolvedDependency> allDependencies = new HashMap<>();
             final Set<ResolvedDependency> firstLevelDependencies =

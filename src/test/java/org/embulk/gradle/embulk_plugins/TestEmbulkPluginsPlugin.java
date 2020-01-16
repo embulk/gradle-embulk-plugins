@@ -17,6 +17,7 @@
 package org.embulk.gradle.embulk_plugins;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
@@ -32,6 +33,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
+import java.util.stream.Stream;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -82,6 +84,18 @@ class TestEmbulkPluginsPlugin {
         assertManifest(jarPath);
         assertTrue(Files.exists(pomPath));
         assertPom(pomPath);
+    }
+
+    @Test
+    public void testEmbulkPluginRuntimeConfiguration(@TempDir Path tempDir) throws IOException {
+        final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test2"));
+        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build2.gradle"),
+                   projectDir.resolve("build.gradle"));
+
+        this.build(projectDir, "dependencies", "--configuration", "embulkPluginRuntime", "--write-locks");
+        final Path lockfilePath = projectDir.resolve("gradle/dependency-locks/embulkPluginRuntime.lockfile");
+        assertTrue(Files.exists(lockfilePath));
+        assertFileDoesNotContain(lockfilePath, "javax.inject:javax.inject");
     }
 
     private static BuildResult build(final Path projectDir, final String... args) {
@@ -157,6 +171,14 @@ class TestEmbulkPluginsPlugin {
         assertSingleTextContentByTagName("commons-lang3", dependency1, "artifactId");
         assertSingleTextContentByTagName("3.9", dependency1, "version");
         assertSingleTextContentByTagName("runtime", dependency1, "scope");
+    }
+
+    private static void assertFileDoesNotContain(final Path path, final String notExpected) throws IOException {
+        try (final Stream<String> lines = Files.newBufferedReader(path).lines()) {
+            lines.forEach(actualLine -> {
+                assertFalse(actualLine.contains(notExpected));
+            });
+        }
     }
 
     private static GradleRunner newGradleRunner(final Path projectDir, final List<String> args) {
