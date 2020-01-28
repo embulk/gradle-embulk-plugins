@@ -101,7 +101,12 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         extension.checkValidity();
 
         configureAlternativeRuntimeBasics(alternativeRuntimeConfiguration);
-        configureAlternativeRuntimeDependencies(project, runtimeConfiguration, alternativeRuntimeConfiguration);
+
+        // Dependencies of "embulkPluginRuntime" will be set only when "mainJar" is not configured.
+        // If "mainJar" is set (ex. to "shadowJar"), developers need to configure "embulkPluginRuntime" by themselves.
+        if (!extension.getMainJar().isPresent()) {
+            configureAlternativeRuntimeDependencies(project, runtimeConfiguration, alternativeRuntimeConfiguration);
+        }
 
         configureComponentsJava(project, alternativeRuntimeConfiguration);
 
@@ -242,7 +247,13 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
      * Configures the standard {@code "jar"} task with required MANIFEST.
      */
     private static void configureJarTask(final Project project, final EmbulkPluginExtension extension) {
-        project.getTasks().named("jar", Jar.class, jarTask -> {
+        final String mainJarTaskName;
+        if (extension.getMainJar().isPresent()) {
+            mainJarTaskName = extension.getMainJar().get();
+        } else {
+            mainJarTaskName = "jar";
+        }
+        project.getTasks().named(mainJarTaskName, Jar.class, jarTask -> {
             jarTask.manifest(UpdateManifestAction.builder()
                              .add("Embulk-Plugin-Main-Class", extension.getMainClass().get())
                              .add("Embulk-Plugin-Category", extension.getCategory().get())
@@ -297,7 +308,13 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             final EmbulkPluginExtension extension,
             final Configuration alternativeRuntimeConfiguration) {
         final TaskProvider<Gem> gemTask = project.getTasks().named("gem", Gem.class, task -> {
-            task.dependsOn("jar");
+            final String mainJarTaskName;
+            if (extension.getMainJar().isPresent()) {
+                mainJarTaskName = extension.getMainJar().get();
+            } else {
+                mainJarTaskName = "jar";
+            }
+            task.dependsOn(mainJarTaskName);
 
             task.setEmbulkPluginMainClass(extension.getMainClass().get());
             task.setEmbulkPluginCategory(extension.getCategory().get());
@@ -322,7 +339,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             task.from(alternativeRuntimeConfiguration, copySpec -> {
                 copySpec.into("classpath");
             });
-            task.from(((Jar) project.getTasks().getByName("jar")).getArchiveFile(), copySpec -> {
+            task.from(((Jar) project.getTasks().getByName(mainJarTaskName)).getArchiveFile(), copySpec -> {
                 copySpec.into("classpath");
             });
         });
