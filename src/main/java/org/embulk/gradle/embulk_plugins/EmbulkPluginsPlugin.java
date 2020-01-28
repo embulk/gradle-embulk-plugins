@@ -68,12 +68,6 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         // It must be a non-detached configuration to be mapped into Maven scopes by Conf2ScopeMapping.
         final Configuration alternativeRuntimeConfiguration = project.getConfigurations().maybeCreate("embulkPluginRuntime");
 
-        // The "embulkPluginRuntime" configuration has dependency locking activated by default.
-        // https://docs.gradle.org/current/userguide/dependency_locking.html
-        alternativeRuntimeConfiguration.getResolutionStrategy().activateDependencyLocking();
-
-        configureAlternativeRuntime(project, runtimeConfiguration, alternativeRuntimeConfiguration);
-
         // It must be configured before evaluation (not in afterEvaluate).
         replaceConf2ScopeMappings(project, runtimeConfiguration, alternativeRuntimeConfiguration);
 
@@ -106,22 +100,26 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
         extension.checkValidity();
 
+        configureAlternativeRuntimeBasics(alternativeRuntimeConfiguration);
+        configureAlternativeRuntimeDependencies(project, runtimeConfiguration, alternativeRuntimeConfiguration);
+
         configureComponentsJava(project, alternativeRuntimeConfiguration);
 
         configureJarTask(project, extension);
 
         warnIfRuntimeHasCompileOnlyDependencies(project, alternativeRuntimeConfiguration);
 
-        configureGemTasks(project, extension, runtimeConfiguration);
+        configureGemTasks(project, extension, alternativeRuntimeConfiguration);
     }
 
     /**
-     * Configures the alternative (flattened) runtime configuration with flattened dependencies.
+     * Configures the basics of the alternative (flattened) runtime configuration.
      */
-    private static void configureAlternativeRuntime(
-            final Project project,
-            final Configuration runtimeConfiguration,
-            final Configuration alternativeRuntimeConfiguration) {
+    private static void configureAlternativeRuntimeBasics(final Configuration alternativeRuntimeConfiguration) {
+        // The "embulkPluginRuntime" configuration has dependency locking activated by default.
+        // https://docs.gradle.org/current/userguide/dependency_locking.html
+        alternativeRuntimeConfiguration.getResolutionStrategy().activateDependencyLocking();
+
         // The "embulkPluginRuntime" configuration do not need to be transitive, and must be non-transitive.
         //
         // It contains all transitive dependencies of "runtime" flattened. It does not need to be transitive, then.
@@ -138,7 +136,15 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         // If "embulkPluginRuntime" is still transitive, it would finally contain "javax.inject:javax.inject".
         // The behavior is unintended. So, "embulkPluginRuntime" must be non-transitive.
         alternativeRuntimeConfiguration.setTransitive(false);
+    }
 
+    /**
+     * Configures the alternative (flattened) runtime configuration with flattened dependencies.
+     */
+    private static void configureAlternativeRuntimeDependencies(
+            final Project project,
+            final Configuration runtimeConfiguration,
+            final Configuration alternativeRuntimeConfiguration) {
         alternativeRuntimeConfiguration.withDependencies(dependencies -> {
             final Map<String, ResolvedDependency> allDependencies = new HashMap<>();
             final Set<ResolvedDependency> firstLevelDependencies =
@@ -289,9 +295,10 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
     private static void configureGemTasks(
             final Project project,
             final EmbulkPluginExtension extension,
-            final Configuration runtimeConfiguration) {
+            final Configuration alternativeRuntimeConfiguration) {
         final TaskProvider<Gem> gemTask = project.getTasks().named("gem", Gem.class, task -> {
             task.dependsOn("jar");
+
             task.setEmbulkPluginMainClass(extension.getMainClass().get());
             task.setEmbulkPluginCategory(extension.getCategory().get());
             task.setEmbulkPluginType(extension.getType().get());
@@ -312,7 +319,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             }
 
             task.getDestinationDirectory().set(((File) project.property("buildDir")).toPath().resolve("gems").toFile());
-            task.from(runtimeConfiguration, copySpec -> {
+            task.from(alternativeRuntimeConfiguration, copySpec -> {
                 copySpec.into("classpath");
             });
             task.from(((Jar) project.getTasks().getByName("jar")).getArchiveFile(), copySpec -> {
