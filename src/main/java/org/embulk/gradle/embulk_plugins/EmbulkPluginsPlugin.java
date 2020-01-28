@@ -58,7 +58,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         project.getPluginManager().apply(JavaPlugin.class);
         project.getPluginManager().apply(MavenPlugin.class);
 
-        final EmbulkPluginExtension extension = createExtension(project);
+        createExtension(project);
 
         project.getTasks().create("gem", Gem.class);
         project.getTasks().create("gemPush", GemPush.class);
@@ -85,8 +85,14 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         });
     }
 
-    private static EmbulkPluginExtension createExtension(final Project project) {
-        return project.getExtensions().create(
+    /**
+     * Creates an extension of "embulkPlugin { ... }".
+     *
+     * <p>This method does not return the instance of {@code EmbulkPluginExtension} created because
+     * it does not contain meaningful information before evaluate.
+     */
+    private static void createExtension(final Project project) {
+        project.getExtensions().create(
                 "embulkPlugin",
                 EmbulkPluginExtension.class,
                 project);
