@@ -60,12 +60,8 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
         final EmbulkPluginExtension extension = createExtension(project);
 
-        project.getTasks().create("gem", Gem.class, task -> {
-            task.dependsOn("jar");
-        });
-        project.getTasks().create("gemPush", GemPush.class, task -> {
-            task.dependsOn("gem");
-        });
+        project.getTasks().create("gem", Gem.class);
+        project.getTasks().create("gemPush", GemPush.class);
 
         final Configuration runtimeConfiguration = project.getConfigurations().getByName("runtime");
 
@@ -289,6 +285,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             final EmbulkPluginExtension extension,
             final Configuration runtimeConfiguration) {
         final TaskProvider<Gem> gemTask = project.getTasks().named("gem", Gem.class, task -> {
+            task.dependsOn("jar");
             task.setEmbulkPluginMainClass(extension.getMainClass().get());
             task.setEmbulkPluginCategory(extension.getCategory().get());
             task.setEmbulkPluginType(extension.getType().get());
@@ -318,6 +315,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         });
 
         project.getTasks().named("gemPush", GemPush.class, task -> {
+            task.dependsOn("gem");
             if (!task.getGem().isPresent()) {
                 task.getGem().set(gemTask.get().getArchiveFile());
             }
