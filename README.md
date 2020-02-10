@@ -7,11 +7,12 @@ Quick Guide
 ```
 plugins {
     id "java"
-    id "maven"
+    id "maven"  // To release with upload (uploadArchives).
+    id "maven-publish"  // To release with publishing.
 
     // Once this Gradle plugin is applied, its transitive dependencies are automatically updated to be flattened.
     // The update affects the default `jar` task, and default Maven uploading mechanisms as well.
-    id "org.embulk.embulk-plugins" version "0.2.5"
+    id "org.embulk.embulk-plugins" version "0.2.7"
 }
 
 group = "com.example"
@@ -34,7 +35,7 @@ dependencies {
     //     exclude group: "org.embulk", module: "embulk-core"
     // }
 
-    testCompile "junit:junit:4.12"
+    testCompile "junit:junit:4.13"
 }
 
 embulkPlugin {
@@ -99,7 +100,8 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
 
 ### How to migrate old-style `build.gradle` of your Embulk plugins
 
-1. Upgrade your Gradle wrapper to `5.5.1+`.
+1. Upgrade your Gradle wrapper to `5.5.1`.
+    * This plugin does not work with Gradle 6 yet.
 2. Define `group`, `version`, and `description` in your Gradle project.
     * `group` should **NOT** be `"org.embulk"` unless your project is under: https://github.com/embulk. For example:
       ```
@@ -126,14 +128,28 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
           exclude group: "javax.inject", module: "javax.inject"  // embulk-core depends on javax.inject.
       }
       ```
-4. **Remove** an unnecessary configuration.
+4. Add required `testCompile` if depending on `embulk-core:0.9.22+`.
+    * If depending on `embulk-core:0.9.22`:
+      ```
+      // TODO: Remove it.
+      // This `testCompile` is a tentative workaround. It will be covered in Embulk core's testing mechanism.
+      testCompile "org.embulk:embulk-deps-buffer:0.9.22"
+      ```
+    * If depending on `embulk-core:0.9.23`:
+      ```
+      // TODO: Remove them.
+      // These `testCompile` are a tentative workaround. It will be covered in Embulk core's testing mechanism.
+      testCompile "org.embulk:embulk-deps-buffer:0.9.23"
+      testCompile "org.embulk:embulk-deps-config:0.9.23"
+      ```
+5. **Remove** an unnecessary configuration.
     * `provided`
     ```
     configurations {
         provided
     }
     ```
-5. **Remove** unnecessary tasks.
+6. **Remove** unnecessary tasks.
     * `classpath`
     ```
     task classpath(type: Copy, dependsOn: ["jar"]) {
@@ -197,18 +213,18 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
     }
     clean { delete "${project.name}.gemspec" }
     ```
-6. Remove an unnecessary file.
+7. Remove an unnecessary file.
     * `lib/embulk/<category>/<type>.rb`: the `gem` task defined in this Gradle plugin generates this `.rb` file under `build/` behind, and includes it in the gem. For example of `lib/embulk/input/example.rb`:
       ```
       Embulk::JavaPlugin.register_input(
         "example", "org.embulk.input.example.ExampleInputPlugin",
         File.expand_path('../../../../classpath', __FILE__))
       ```
-7. Apply this Gradle plugin `"org.embulk.embulk-plugins"`.
+8. Apply this Gradle plugin `"org.embulk.embulk-plugins"`.
     * Using the [plugins DSL](https://docs.gradle.org/current/userguide/plugins.html#sec:plugins_block):
       ```
       plugins {
-          id "org.embulk.embulk-plugins" version "0.2.5"
+          id "org.embulk.embulk-plugins" version "0.2.7"
       }
     * Using [legacy plugin application](https://docs.gradle.org/current/userguide/plugins.html#sec:old_plugin_application):
       ```
@@ -219,12 +235,21 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
           }
       }
       dependencies {
-          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.2.5"
+          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.2.7"
       }
 
       apply plugin: "org.embulk.embulk-plugins"
       ```
-8. Configure the task `embulkPlugin`.
+9. Remove unnecessary JRuby/Gradle plugin.
+    * Plugin application:
+      ```
+          id "com.github.jruby-gradle.base" version "0.1.5"
+      ```
+    * Class import:
+      ```
+      import com.github.jrubygradle.JRubyExec
+      ```
+10. Configure the task `embulkPlugin`.
     * `mainClass`, `category`, and `type` are mandatory. For example:
     ```
     embulkPlugin {
@@ -232,7 +257,7 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
         category = "input"
         type = "dummy"
     }
-9. Configure publishing the plugin JAR to the Maven repository where you want to upload.
+11. Configure publishing the plugin JAR to the Maven repository where you want to upload.
     * The standard `jar` task is already reconfigured to generate a JAR ready as an Embulk plugin.
     * Publishing example with `uploadArchives`:
     ```
@@ -260,7 +285,7 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
         }
     }
     ```
-10. Configure more to publish your plugin as a gem.
+12. Configure more to publish your plugin as a gem.
     * Configure the `gem` task. Note that `gem` is a type of archive tasks such as `jar` and `zip`, with some additional properties to fulfill `.gemspec`:
       ```
       gem {
