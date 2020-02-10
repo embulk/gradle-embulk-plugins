@@ -35,6 +35,7 @@ import org.gradle.api.provider.Property;
  *     mainClass = "org.embulk.input.example.ExampleInputPlugin"
  *     category = "input"
  *     type = "example"
+ *     // mainJar = "shadowJar"
  * }}</pre>
  */
 public class EmbulkPluginExtension {
@@ -45,6 +46,7 @@ public class EmbulkPluginExtension {
         this.mainClass = objectFactory.property(String.class);
         this.category = objectFactory.property(String.class);
         this.type = objectFactory.property(String.class);
+        this.mainJar = objectFactory.property(String.class);
     }
 
     public Property<String> getMainClass() {
@@ -57,6 +59,10 @@ public class EmbulkPluginExtension {
 
     public Property<String> getType() {
         return this.type;
+    }
+
+    public Property<String> getMainJar() {
+        return this.mainJar;
     }
 
     void checkValidity() {
@@ -102,4 +108,5 @@ public class EmbulkPluginExtension {
     private final Property<String> mainClass;
     private final Property<String> category;
     private final Property<String> type;
+    private final Property<String> mainJar;
 }

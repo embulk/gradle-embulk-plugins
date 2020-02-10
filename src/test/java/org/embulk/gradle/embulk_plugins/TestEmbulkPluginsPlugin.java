@@ -30,8 +30,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.jar.Attributes;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 import java.util.stream.Stream;
 import javax.xml.parsers.DocumentBuilder;
@@ -98,6 +101,42 @@ class TestEmbulkPluginsPlugin {
         assertFileDoesNotContain(lockfilePath, "javax.inject:javax.inject");
     }
 
+    @Test
+    public void testVariableMainJar(@TempDir Path tempDir) throws IOException {
+        final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test3"));
+        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build3.gradle"),
+                   projectDir.resolve("build.gradle"));
+
+        this.build(projectDir, "jar");
+        assertTrue(Files.exists(projectDir.resolve("build/libs/embulk-input-test3-0.2.8.jar")));
+
+        this.build(projectDir, "publishEmbulkPluginMavenPublicationToMavenRepository");
+        final Path versionDir = projectDir.resolve("build/mavenLocal3/org/embulk/input/test3/embulk-input-test3/0.2.8");
+        final Path jarPath = versionDir.resolve("embulk-input-test3-0.2.8.jar");
+        final Path pomPath = versionDir.resolve("embulk-input-test3-0.2.8.pom");
+
+        assertTrue(Files.exists(jarPath));
+        try (final JarFile jarFile = new JarFile(jarPath.toFile())) {
+            boolean found = false;
+            final Enumeration<JarEntry> entries = jarFile.entries();
+            for (; entries.hasMoreElements(); ) {
+                final JarEntry entry = entries.nextElement();
+                if (entry.getName().equals("javax/json/Json.class")) {
+                    found = true;
+                    break;
+                }
+            }
+            assertTrue(found);
+        }
+
+        final Attributes manifestAttributes = getManifestAttributes(jarPath);
+        assertEquals("org.embulk.input.test3.Test3InputPlugin", manifestAttributes.getValue("Embulk-Plugin-Main-Class"));
+        assertEquals("Bar", manifestAttributes.getValue("Foo"));
+
+        assertTrue(Files.exists(pomPath));
+        assertPom3(pomPath);
+    }
+
     private static BuildResult build(final Path projectDir, final String... args) {
         final ArrayList<String> argsList = new ArrayList<>();
         argsList.addAll(Arrays.asList(args));
@@ -116,6 +155,12 @@ class TestEmbulkPluginsPlugin {
         final Attributes manifestAttributes = manifest.getMainAttributes();
         assertEquals("org.embulk.input.test1.Test1InputPlugin", manifestAttributes.getValue("Embulk-Plugin-Main-Class"));
         assertEquals("0", manifestAttributes.getValue("Embulk-Plugin-Spi-Version"));
+    }
+
+    private static Attributes getManifestAttributes(final Path jarPath) throws IOException {
+        final JarURLConnection connection = openJarUrlConnection(jarPath);
+        final Manifest manifest = connection.getManifest();
+        return manifest.getMainAttributes();
     }
 
     private static void assertPom(final Path pomPath) throws IOException {
@@ -173,6 +218,41 @@ class TestEmbulkPluginsPlugin {
         assertSingleTextContentByTagName("runtime", dependency1, "scope");
     }
 
+    private static void assertPom3(final Path pomPath) throws IOException {
+        System.out.println("Generated POM :");
+        System.out.println("============================================================");
+        for (final String line : Files.readAllLines(pomPath, StandardCharsets.UTF_8)) {
+            System.out.println(line);
+        }
+        System.out.println("============================================================");
+
+        final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+
+        final DocumentBuilder builder;
+        try {
+            builder = factory.newDocumentBuilder();
+        } catch (final ParserConfigurationException ex) {
+            throw new IOException(ex);
+        }
+
+        final Document document;
+        try (final InputStream pomStream = Files.newInputStream(pomPath)) {
+            document = builder.parse(pomStream);
+        } catch (final SAXException ex) {
+            throw new IOException(ex);
+        }
+
+        assertEquals("1.0", document.getXmlVersion());
+        final Element project = document.getDocumentElement();
+        assertEquals("project", project.getTagName());
+        assertSingleTextContentByTagName("4.0.0", project, "modelVersion");
+        assertSingleTextContentByTagName("org.embulk.input.test3", project, "groupId");
+        assertSingleTextContentByTagName("embulk-input-test3", project, "artifactId");
+        assertSingleTextContentByTagName("0.2.8", project, "version");
+
+        assertNoElementByTagName(project, "dependencies");  // No dependencies.
+    }
+
     private static void assertFileDoesNotContain(final Path path, final String notExpected) throws IOException {
         try (final Stream<String> lines = Files.newBufferedReader(path).lines()) {
             lines.forEach(actualLine -> {
@@ -208,6 +288,21 @@ class TestEmbulkPluginsPlugin {
         }
         assertEquals(1, matchedElements.size());
         return matchedElements.get(0);
+    }
+
+    private static void assertNoElementByTagName(final Element element, final String name) {
+        final NodeList childNodeList = element.getChildNodes();
+        final ArrayList<Element> matchedElements = new ArrayList<>();
+        for (int i = 0; i < childNodeList.getLength(); ++i) {
+            final Node foundNode = childNodeList.item(i);
+            if (foundNode instanceof Element) {
+                final Element foundElement = (Element) foundNode;
+                if (foundElement.getTagName().equals(name)) {
+                    matchedElements.add(foundElement);
+                }
+            }
+        }
+        assertEquals(0, matchedElements.size());
     }
 
     private static void assertSingleTextContentByTagName(final String expected, final Element element, final String name) {
