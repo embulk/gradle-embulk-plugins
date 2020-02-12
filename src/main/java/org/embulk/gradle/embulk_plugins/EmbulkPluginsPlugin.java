@@ -36,9 +36,11 @@ import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.artifacts.maven.Conf2ScopeMapping;
 import org.gradle.api.artifacts.maven.Conf2ScopeMappingContainer;
+import org.gradle.api.attributes.Usage;
 import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.component.SoftwareComponent;
 import org.gradle.api.logging.Logger;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.MavenPlugin;
 import org.gradle.api.tasks.TaskProvider;
@@ -100,7 +102,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
         extension.checkValidity();
 
-        configureAlternativeRuntimeBasics(alternativeRuntimeConfiguration);
+        configureAlternativeRuntimeBasics(alternativeRuntimeConfiguration, project.getObjects());
 
         // Dependencies of "embulkPluginRuntime" will be set only when "mainJar" is not configured.
         // If "mainJar" is set (ex. to "shadowJar"), developers need to configure "embulkPluginRuntime" by themselves.
@@ -120,7 +122,9 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
     /**
      * Configures the basics of the alternative (flattened) runtime configuration.
      */
-    private static void configureAlternativeRuntimeBasics(final Configuration alternativeRuntimeConfiguration) {
+    private static void configureAlternativeRuntimeBasics(
+            final Configuration alternativeRuntimeConfiguration,
+            final ObjectFactory objectFactory) {
         // The "embulkPluginRuntime" configuration has dependency locking activated by default.
         // https://docs.gradle.org/current/userguide/dependency_locking.html
         alternativeRuntimeConfiguration.getResolutionStrategy().activateDependencyLocking();
@@ -141,6 +145,15 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         // If "embulkPluginRuntime" is still transitive, it would finally contain "javax.inject:javax.inject".
         // The behavior is unintended. So, "embulkPluginRuntime" must be non-transitive.
         alternativeRuntimeConfiguration.setTransitive(false);
+
+        // Since Gradle 6.0.1, all variants for components need to have at least one Attribute.
+        // https://github.com/gradle/gradle/issues/11700
+        //
+        // Rather than setting a random Attribute, the Usage attribute would be the most reasonable to set.
+        // https://docs.gradle.org/6.1.1/userguide/variant_attributes.html#sec:standard_attributes
+        alternativeRuntimeConfiguration.attributes(attributes -> {
+            attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
+        });
     }
 
     /**
@@ -222,13 +235,15 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
     /**
      * Configures "components.java" (SoftwareComponent used for "from components.java" in MavenPublication)
      * to include "embulkPluginRuntime" as the "runtime" scope of Maven.
-     * https://docs.gradle.org/5.5.1/dsl/org.gradle.api.publish.maven.MavenPublication.html#N1C095
-     * https://github.com/gradle/gradle/blob/v5.5.1/subprojects/plugins/src/main/java/org/gradle/api/plugins/JavaPlugin.java#L347-L354
+     *
+     * https://docs.gradle.org/6.1.1/userguide/publishing_customization.html#sec:adding-variants-to-existing-components
+     * https://docs.gradle.org/6.1.1/dsl/org.gradle.api.publish.maven.MavenPublication.html#N1BF06
+     * https://github.com/gradle/gradle/blob/v6.1.1/subprojects/plugins/src/main/java/org/gradle/api/plugins/JavaPlugin.java#L358-L365
      *
      * This SoftwareComponent configuration is used to in maven-publish.
-     * https://github.com/gradle/gradle/blob/v5.5.1/subprojects/maven/src/main/java/org/gradle/api/publish/maven/internal/publication/DefaultMavenPublication.java#L344-L352
-     * https://github.com/gradle/gradle/blob/v5.5.1/subprojects/maven/src/main/java/org/gradle/api/publish/maven/internal/publication/DefaultMavenPublication.java#L266-L277
-     * https://github.com/gradle/gradle/blob/v5.5.1/subprojects/maven/src/main/java/org/gradle/api/publish/maven/internal/publication/DefaultMavenPublication.java#L354-L374
+     * https://github.com/gradle/gradle/blob/v6.1.1/subprojects/maven/src/main/java/org/gradle/api/publish/maven/internal/publication/DefaultMavenPublication.java#L382-L390
+     * https://github.com/gradle/gradle/blob/v6.1.1/subprojects/maven/src/main/java/org/gradle/api/publish/maven/internal/publication/DefaultMavenPublication.java#L274-L286
+     * https://github.com/gradle/gradle/blob/v6.1.1/subprojects/maven/src/main/java/org/gradle/api/publish/maven/internal/publication/DefaultMavenPublication.java#L392-L412
      */
     private static void configureComponentsJava(
             final Project project,
