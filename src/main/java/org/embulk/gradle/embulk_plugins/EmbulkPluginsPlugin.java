@@ -65,17 +65,8 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
         final Configuration runtimeConfiguration = project.getConfigurations().getByName("runtime");
 
-        // It must be a non-detached configuration to be mapped into Maven scopes by Conf2ScopeMapping.
-        final Configuration alternativeRuntimeConfiguration = project.getConfigurations().maybeCreate("embulkPluginRuntime");
-
-        // It must be configured before evaluation (not in afterEvaluate).
-        replaceConf2ScopeMappings(project, runtimeConfiguration, alternativeRuntimeConfiguration);
-
         project.afterEvaluate(projectAfterEvaluate -> {
-            initializeAfterEvaluate(projectAfterEvaluate, runtimeConfiguration, alternativeRuntimeConfiguration);
-
-            // Configuration#getResolvedConfiguration here so that the dependency lock state is checked.
-            alternativeRuntimeConfiguration.getResolvedConfiguration();
+            initializeAfterEvaluate(projectAfterEvaluate, runtimeConfiguration);
         });
     }
 
@@ -94,11 +85,15 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
     private static void initializeAfterEvaluate(
             final Project project,
-            final Configuration runtimeConfiguration,
-            final Configuration alternativeRuntimeConfiguration) {
+            final Configuration runtimeConfiguration) {
         final EmbulkPluginExtension extension = project.getExtensions().getByType(EmbulkPluginExtension.class);
 
         extension.checkValidity();
+
+        // TODO: Reconsider a possibility that it can be a detached configuration.
+        // It must have been a non-detached configuration to be mapped into Maven scopes by Conf2ScopeMapping,
+        // but we no longer support Conf2ScopeMapping with uploadArchives.
+        final Configuration alternativeRuntimeConfiguration = project.getConfigurations().maybeCreate("embulkPluginRuntime");
 
         configureAlternativeRuntimeBasics(alternativeRuntimeConfiguration);
 
@@ -115,6 +110,9 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         warnIfRuntimeHasCompileOnlyDependencies(project, alternativeRuntimeConfiguration);
 
         configureGemTasks(project, extension, alternativeRuntimeConfiguration);
+
+        // Configuration#getResolvedConfiguration here so that the dependency lock state is checked.
+        alternativeRuntimeConfiguration.getResolvedConfiguration();
     }
 
     /**
@@ -184,39 +182,6 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                 dependencies.add(project.getDependencies().create(notation));
             }
         });
-    }
-
-    /**
-     * Replaces {@code "runtime"} to the alternative runtime configuration in Gradle's {@code conf2ScopeMappings}
-     * so that the alternative runtime configuration is used to generate pom.xml, instead of the standard
-     * {@code "runtime"} configuration.
-     *
-     * <p>The mappings correspond Gradle configurations (e.g. {@code "compile"}, {@code "compileOnly"}) to
-     * Maven scopes (e.g. {@code "compile"}, {@code "provided"}).
-     *
-     * <p>See {@code MavenPlugin.java} and {@code DefaultPomDependenciesConverter.java} for how Gradle is
-     * converting Gradle dependencies to Maven POM dependencies.
-     *
-     * <p>Note that {@code conf2ScopeMappings} must be configured before evaluation (not in {@code afterEvaluate}).
-     * See <a href="https://github.com/gradle/gradle/issues/1373">https://github.com/gradle/gradle/issues/1373</a>.
-     *
-     * @see <a href="https://github.com/gradle/gradle/blob/v5.5.1/subprojects/maven/src/main/java/org/gradle/api/publication/maven/internal/pom/DefaultPomDependenciesConverter.java">DefaultPomDependenciesConverter</a>
-     * @see <a href="https://github.com/gradle/gradle/blob/v5.5.1/subprojects/maven/src/main/java/org/gradle/api/plugins/MavenPlugin.java#L171-L184">MavenPlugin#configureJavaScopeMappings</a>
-     */
-    private static void replaceConf2ScopeMappings(
-            final Project project,
-            final Configuration runtimeConfiguration,
-            final Configuration alternativeRuntimeConfiguration) {
-        final Object conf2ScopeMappingsObject = project.property("conf2ScopeMappings");
-        if (!(conf2ScopeMappingsObject instanceof Conf2ScopeMappingContainer)) {
-            throw new GradleException("Unexpected with \"conf2ScopeMappings\" not configured properly.");
-        }
-        final Conf2ScopeMappingContainer conf2ScopeMappingContainer = (Conf2ScopeMappingContainer) conf2ScopeMappingsObject;
-        final Map<Configuration, Conf2ScopeMapping> conf2ScopeMappings = conf2ScopeMappingContainer.getMappings();
-        conf2ScopeMappings.remove(runtimeConfiguration);
-        conf2ScopeMappingContainer.addMapping(MavenPlugin.RUNTIME_PRIORITY + 1,
-                                              alternativeRuntimeConfiguration,
-                                              Conf2ScopeMappingContainer.RUNTIME);
     }
 
     /**

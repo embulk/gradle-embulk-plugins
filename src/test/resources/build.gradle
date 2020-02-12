@@ -33,15 +33,6 @@ embulkPlugin {
     type = "test1"
 }
 
-uploadArchives {
-    repositories {
-        mavenDeployer {
-            repository(url: "file:${project.buildDir}/mavenLocal")
-            snapshotRepository(url: "file:${project.buildDir}/mavenLocalSnapshot")
-        }
-    }
-}
-
 publishing {
     publications {
         embulkPluginMaven(MavenPublication) {

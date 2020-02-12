@@ -7,12 +7,11 @@ Quick Guide
 ```
 plugins {
     id "java"
-    id "maven"  // To release with upload (uploadArchives).
-    id "maven-publish"  // To release with publishing.
+    id "maven-publish"  // Note that "uploadArchives" with the "maven" plugin is no longer supported.
 
     // Once this Gradle plugin is applied, its transitive dependencies are automatically updated to be flattened.
     // The update affects the default `jar` task, and default Maven uploading mechanisms as well.
-    id "org.embulk.embulk-plugins" version "0.2.7"
+    id "org.embulk.embulk-plugins" version "0.3.0"
 }
 
 group = "com.example"
@@ -44,17 +43,10 @@ embulkPlugin {
     type = "example"
 }
 
-// This Gradle plugin's POM dependency modification works for Upload tasks.
-uploadArchives {
-    repositories {
-        mavenDeployer {
-            repository(url: "file:${project.buildDir}/mavenLocal")
-            snapshotRepository(url: "file:${project.buildDir}/mavenLocalSnapshot")
-        }
-    }
-}
-
 // This Gradle plugin's POM dependency modification works for "maven-publish" tasks.
+//
+// Note that "uploadArchives" is no longer supported. It is deprecated in Gradle 6 to be removed in Gradle 7.
+// https://github.com/gradle/gradle/issues/3003#issuecomment-495025844
 publishing {
     publications {
         embulkPluginMaven(MavenPublication) {  // Publish it with "publishEmbulkPluginMavenPublicationToMavenRepository".
@@ -224,7 +216,7 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
     * Using the [plugins DSL](https://docs.gradle.org/current/userguide/plugins.html#sec:plugins_block):
       ```
       plugins {
-          id "org.embulk.embulk-plugins" version "0.2.7"
+          id "org.embulk.embulk-plugins" version "0.3.0"
       }
     * Using [legacy plugin application](https://docs.gradle.org/current/userguide/plugins.html#sec:old_plugin_application):
       ```
@@ -235,7 +227,7 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
           }
       }
       dependencies {
-          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.2.7"
+          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.3.0"
       }
 
       apply plugin: "org.embulk.embulk-plugins"
@@ -259,17 +251,7 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
     }
 11. Configure publishing the plugin JAR to the Maven repository where you want to upload.
     * The standard `jar` task is already reconfigured to generate a JAR ready as an Embulk plugin.
-    * Publishing example with `uploadArchives`:
-    ```
-    uploadArchives {
-        repositories {
-            mavenDeployer {
-                repository(url: "file:${project.buildDir}/mavenLocal")
-                snapshotRepository(url: "file:${project.buildDir}/mavenLocalSnapshot")
-            }
-        }
-    }
-    ```
+    * Note that `uploadArchives` with the `maven` plugin is no longer supported.
     * Publishing example with `maven-publish`:
     ```
     publishing {
