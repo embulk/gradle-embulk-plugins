@@ -88,7 +88,7 @@ publishing {
 
 The dependency configuration `embulkPluginRuntime`, which is added by this Gradle plugin for flattened dependencies, has [dependency locking](https://docs.gradle.org/current/userguide/dependency_locking.html) activated by default.
 
-In the beginning of your Embulk plugin project, it is recommended for you to run `./gradlew dependencies --write-locks`, and add generated `gradle/dependency-locks/embulkPluginRuntime.lockfile` in your version control system. Your Embulk plugin project will have more sensitive checks on its dependency libraries, then.
+In the beginning of your Embulk plugin project, or after migrating your Embulk plugin project to use this Gradle plugin, it is recommended for you to run `./gradlew dependencies --write-locks`, and add generated `gradle/dependency-locks/embulkPluginRuntime.lockfile` in your version control system. Your Embulk plugin project will have more sensitive checks on its dependency libraries, then.
 
 ### How to migrate old-style `build.gradle` of your Embulk plugins
 
@@ -216,6 +216,7 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
     * Using the [plugins DSL](https://docs.gradle.org/current/userguide/plugins.html#sec:plugins_block):
       ```
       plugins {
+          id "maven-publish"
           id "org.embulk.embulk-plugins" version "0.3.0"
       }
     * Using [legacy plugin application](https://docs.gradle.org/current/userguide/plugins.html#sec:old_plugin_application):
@@ -230,6 +231,7 @@ In the beginning of your Embulk plugin project, it is recommended for you to run
           classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.3.0"
       }
 
+      apply plugin: "maven-publish"
       apply plugin: "org.embulk.embulk-plugins"
       ```
 9. Remove unnecessary JRuby/Gradle plugin.
