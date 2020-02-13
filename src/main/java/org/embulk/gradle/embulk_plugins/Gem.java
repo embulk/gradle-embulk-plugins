@@ -59,6 +59,15 @@ import org.gradle.process.ExecResult;
  *   homepage = "https://example.com"
  *   licenses = [ "Apache-2.0" ]
  *
+ *   // Only if gem dependencies are required.
+ *   dependencies = [ "'jsonpath', ['~> 0.5.8']", "'json', ['~> 2.0.2']" ]
+ *
+ *   // If true, auto-generate the bootstrap Ruby code in /lib/embulk/???/???.rb. (Default = true)
+ *   generateRubyCode = true
+ *
+ *   // If true, auto-generate the .gemspec file at the root directory. (Default = true)
+ *   generateGemspec = true
+ *
  *   // JRuby artifact to execute `gem build`.
  *   // NOTE: Not recommended for users to configure it because this Gradle plugin expects a fixed version of JRuby.
  *   // For example, a certain version of `gem` would be required for command line options specified.
@@ -83,8 +92,15 @@ class Gem extends AbstractArchiveTask {
         this.email = objectFactory.listProperty(String.class);
         this.homepage = objectFactory.property(String.class);
         this.licenses = objectFactory.listProperty(String.class);
+        this.dependencies = objectFactory.listProperty(String.class);
         // https://guides.rubygems.org/specification-reference/#metadata
         this.metadata = objectFactory.mapProperty(String.class, String.class);
+
+        this.generateRubyCode = objectFactory.property(Boolean.class);
+        this.generateRubyCode.set(true);
+
+        this.generateGemspec = objectFactory.property(Boolean.class);
+        this.generateGemspec.set(true);
 
         this.jruby = objectFactory.property(Object.class);
         this.jruby.set(EmbulkPluginsPlugin.DEFAULT_JRUBY);
@@ -110,8 +126,12 @@ class Gem extends AbstractArchiveTask {
             copySpec.with(this);
             copySpec.into(this.getWorkingDir(project).toFile());
         });
-        this.createBootstrap(project);
-        this.createGemspec(project, this.listFiles(project));
+        if ((!this.generateRubyCode.isPresent()) || this.generateRubyCode.get()) {
+            this.createBootstrap(project);
+        }
+        if ((!this.generateGemspec.isPresent()) || this.generateGemspec.get()) {
+            this.createGemspec(project, this.listFiles(project));
+        }
 
         final ArrayList<String> args = new ArrayList<>();
         args.add("-rjars/setup");
@@ -195,8 +215,20 @@ class Gem extends AbstractArchiveTask {
         return this.licenses;
     }
 
+    public ListProperty<String> getDependencies() {
+        return this.dependencies;
+    }
+
     public MapProperty<String, String> getMetadata() {
         return this.metadata;
+    }
+
+    public Property<Boolean> getGenerateRubyCode() {
+        return this.generateRubyCode;
+    }
+
+    public Property<Boolean> getGenerateGemspec() {
+        return this.generateGemspec;
     }
 
     /**
@@ -359,6 +391,11 @@ class Gem extends AbstractArchiveTask {
         if (this.licenses.isPresent() && !this.licenses.get().isEmpty()) {
             writer.println("    spec.licenses      = [" + renderList(this.licenses.get()) + "]");
         }
+        if (this.dependencies.isPresent() && !this.dependencies.get().isEmpty()) {
+            for (final String entry : this.dependencies.get()) {
+                writer.println("    spec.add_dependency  " + entry);
+            }
+        }
         if (this.metadata.isPresent() && !this.metadata.get().isEmpty()) {
             writer.println("    spec.metadata      = {");
             for (final Map.Entry<String, String> entry : this.metadata.get().entrySet()) {
@@ -401,7 +438,11 @@ class Gem extends AbstractArchiveTask {
     private final Property<String> homepage;
     // The singular `license` is to be substituted by `licenses`.
     private final ListProperty<String> licenses;
+    private final ListProperty<String> dependencies;
     private final MapProperty<String, String> metadata;
+
+    private final Property<Boolean> generateRubyCode;
+    private final Property<Boolean> generateGemspec;
 
     private final Property<Object> jruby;
 }

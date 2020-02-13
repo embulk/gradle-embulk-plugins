@@ -118,6 +118,25 @@ class TestEmbulkPluginsPlugin {
         assertPom3(pomPath);
     }
 
+    @Test
+    public void testNoGenerateRubyCode(@TempDir Path tempDir) throws IOException {
+        final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test4"));
+        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build4.gradle"),
+                   projectDir.resolve("build.gradle"));
+        Files.createDirectories(projectDir.resolve("lib/embulk/input/"));
+        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("lib/embulk/input/test4.rb"),
+                   projectDir.resolve("lib/embulk/input/test4.rb"));
+
+        this.build(projectDir, "gem");
+        assertTrue(Files.exists(projectDir.resolve("build/libs/embulk-input-test4-0.9.2.jar")));
+        assertTrue(Files.exists(projectDir.resolve("build/gemContents/lib/embulk/input/test4.rb")));
+
+        final List<String> lines = Files.readAllLines(
+                projectDir.resolve("build/gemContents/lib/embulk/input/test4.rb"), StandardCharsets.UTF_8);
+        assertEquals(1, lines.size());
+        assertEquals("puts \"test\"", lines.get(0));
+    }
+
     private static BuildResult build(final Path projectDir, final String... args) {
         final ArrayList<String> argsList = new ArrayList<>();
         argsList.addAll(Arrays.asList(args));
