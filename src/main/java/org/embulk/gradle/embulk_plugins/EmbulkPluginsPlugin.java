@@ -262,9 +262,9 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                     + "Following \"runtime\" dependencies are included also in \"compileOnly\" dependencies.\n"
                     + "\n"
                     + intersects.stream().map(key -> {
-                          final ResolvedDependency dependency = alternativeRuntimeDependencies.get(key);
-                          return "  \"" + dependency.getModule().toString() + "\"\n";
-                      }).collect(Collectors.joining(""))
+                        final ResolvedDependency dependency = alternativeRuntimeDependencies.get(key);
+                        return "  \"" + dependency.getModule().toString() + "\"\n";
+                    }).collect(Collectors.joining(""))
                     + "\n"
                     + "  \"compileOnly\" dependencies are used to represent Embulk's core to be \"provided\" at runtime.\n"
                     + "  They should be excluded from \"compile\" or \"runtime\" dependencies like the example below.\n"
@@ -334,8 +334,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                 throw new GradleException("Failed to convert the version \"" + mavenVersion + "\" to Gem-style.");
             }
             return versionTokens.get(0) + '.' + versionTokens.get(1).toLowerCase();
-        }
-        else {
+        } else {
             return mavenVersion;
         }
     }
