@@ -32,6 +32,8 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
+import org.gradle.api.artifacts.component.LibraryBinaryIdentifier;
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.component.AdhocComponentWithVariants;
@@ -156,38 +158,58 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             final Project project,
             final Configuration runtimeConfiguration,
             final Configuration alternativeRuntimeConfiguration) {
+        final Logger logger = project.getLogger();
+
         alternativeRuntimeConfiguration.withDependencies(dependencies -> {
             final Map<String, ResolvedDependency> allDependencies = new HashMap<>();
             final Set<ResolvedDependency> firstLevelDependencies =
                     runtimeConfiguration.getResolvedConfiguration().getFirstLevelModuleDependencies();
             for (final ResolvedDependency dependency : firstLevelDependencies) {
-                if (dependency.getConfiguration().equals("runtimeElements")) {
-                    // The target project may contain a non-"group:module:version" dependency. A subproject, for example,
-                    // "compile project(':subproject-a')" should not be resolved as "group:module:version", nor be flattened.
-                    // See also: https://discuss.gradle.org/t/determining-external-vs-sub-project-dependencies/12321
-                    //
-                    // Such a dependency is under the configuration "runtimeElements".
-                    // https://docs.gradle.org/current/userguide/java_library_plugin.html#sec:java_library_configurations_graph
-                    for (final ResolvedArtifact artifact : dependency.getModuleArtifacts()) {
-                        // TODO: Consider nested subproject dependencies. See #54.
-                        final ComponentIdentifier componentIdentifier = artifact.getId().getComponentIdentifier();
-                        if (componentIdentifier instanceof ProjectComponentIdentifier) {
-                            final Project dependencyProject =
-                                    project.project(((ProjectComponentIdentifier) componentIdentifier).getProjectPath());
-                            dependencies.add(project.getDependencies().create(dependencyProject));
-                        }
-                    }
-                } else {
-                    recurseAllDependencies(dependency, allDependencies);
-                }
+                recurseAllDependencies(dependency, allDependencies, project);
             }
 
             for (final ResolvedDependency dependency : allDependencies.values()) {
-                final HashMap<String, String> notation = new HashMap<>();
-                notation.put("group", dependency.getModuleGroup());
-                notation.put("name", dependency.getModuleName());
-                notation.put("version", dependency.getModuleVersion());
-                dependencies.add(project.getDependencies().create(notation));
+                final Set<ResolvedArtifact> moduleArtifacts = dependency.getModuleArtifacts();
+
+                final HashSet<String> types = new HashSet<>();
+                final HashSet<ProjectComponentIdentifier> projects = new HashSet<>();
+                for (final ResolvedArtifact moduleArtifact : moduleArtifacts) {
+                    final ComponentIdentifier componentIdentifier = moduleArtifact.getId().getComponentIdentifier();
+                    if (componentIdentifier instanceof ProjectComponentIdentifier) {
+                        // Project: such as `compile project(":subproject")`
+                        types.add("project");
+                        projects.add((ProjectComponentIdentifier) componentIdentifier);
+                    } else if (componentIdentifier instanceof ModuleComponentIdentifier) {
+                        // Other Java library: such as `compile "com.google.guava:guava:20.0"`
+                        types.add("module");
+                    } else if (componentIdentifier instanceof LibraryBinaryIdentifier) {
+                        // Native library (?): not very sure
+                        logger.warn("Library module artifact type: \"" + moduleArtifact.toString() + "\"");
+                        types.add("library");
+                    } else {
+                        logger.warn("Unknown module artifact type: \"" + moduleArtifact.toString() + "\"");
+                        types.add("other");
+                    }
+                }
+                if (types.size() > 1) {
+                    throw new GradleException(
+                            "Multiple types (" + types.stream().collect(Collectors.joining(", ")) + ") of module artifacts"
+                            + " are found in dependency: " + dependency.toString());
+                }
+
+                if (types.contains("project")) {
+                    if (projects.size() > 1) {
+                        throw new GradleException("Multiple projects are found in dependency: " + dependency.toString());
+                    }
+                    dependencies.add(project.getDependencies().create(
+                                         project.project(projects.iterator().next().getProjectPath())));
+                } else if (types.contains("module")) {
+                    final HashMap<String, String> notation = new HashMap<>();
+                    notation.put("group", dependency.getModuleGroup());
+                    notation.put("name", dependency.getModuleName());
+                    notation.put("version", dependency.getModuleVersion());
+                    dependencies.add(project.getDependencies().create(notation));
+                }
             }
         });
     }
@@ -246,9 +268,9 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         final Configuration compileOnlyConfiguration = project.getConfigurations().getByName("compileOnly");
 
         final Map<String, ResolvedDependency> compileOnlyDependencies =
-                collectAllDependencies(compileOnlyConfiguration);
+                collectAllDependencies(compileOnlyConfiguration, project);
         final Map<String, ResolvedDependency> alternativeRuntimeDependencies =
-                collectAllDependencies(alternativeRuntimeConfiguration);
+                collectAllDependencies(alternativeRuntimeConfiguration, project);
 
         final Set<String> intersects = new HashSet<>();
         intersects.addAll(alternativeRuntimeDependencies.keySet());
@@ -339,12 +361,13 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         }
     }
 
-    private static Map<String, ResolvedDependency> collectAllDependencies(final Configuration configuration) {
+    private static Map<String, ResolvedDependency> collectAllDependencies(
+            final Configuration configuration, final Project project) {
         final HashMap<String, ResolvedDependency> allDependencies = new HashMap<>();
 
         final Set<ResolvedDependency> firstLevel = configuration.getResolvedConfiguration().getFirstLevelModuleDependencies();
         for (final ResolvedDependency dependency : firstLevel) {
-            recurseAllDependencies(dependency, allDependencies);
+            recurseAllDependencies(dependency, allDependencies, project);
         }
 
         return Collections.unmodifiableMap(allDependencies);
@@ -355,15 +378,21 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
      */
     private static void recurseAllDependencies(
             final ResolvedDependency dependency,
-            final Map<String, ResolvedDependency> allDependencies) {
+            final Map<String, ResolvedDependency> allDependencies,
+            final Project project) {
         final String key = dependency.getModuleGroup() + ":" + dependency.getModuleName();
         if (allDependencies.containsKey(key)) {
+            final ResolvedDependency found = allDependencies.get(key);
+            if (!found.equals(dependency)) {
+                project.getLogger().warn(String.format(
+                        "ResolvedDependency conflicts: \"%s\" : \"%s\"", found.toString(), dependency.toString()));
+            }
             return;
         }
         allDependencies.put(key, dependency);
         if (dependency.getChildren().size() > 0) {
             for (final ResolvedDependency child : dependency.getChildren()) {
-                recurseAllDependencies(child, allDependencies);
+                recurseAllDependencies(child, allDependencies, project);
             }
         }
     }
