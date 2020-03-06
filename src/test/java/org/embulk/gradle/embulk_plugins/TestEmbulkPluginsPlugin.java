@@ -136,6 +136,17 @@ class TestEmbulkPluginsPlugin {
         assertEquals("puts \"test\"", lines.get(0));
     }
 
+    @Test
+    public void testRubyVersion(@TempDir Path tempDir) throws IOException {
+        final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test5"));
+        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build5.gradle"),
+                   projectDir.resolve("build.gradle"));
+
+        this.build(projectDir, "gem");
+        assertTrue(Files.exists(projectDir.resolve("build/libs/embulk-input-test5-0.1.41-SNAPSHOT.jar")));
+        assertTrue(Files.exists(projectDir.resolve("build/gems/embulk-input-test5-0.1.41.snapshot-java.gem")));
+    }
+
     private static BuildResult build(final Path projectDir, final String... args) {
         final ArrayList<String> argsList = new ArrayList<>();
         argsList.addAll(Arrays.asList(args));

@@ -116,6 +116,10 @@ class Gem extends AbstractArchiveTask {
 
         this.cleanIfExists(project);
 
+        // https://discuss.gradle.org/t/rewrite-archiveversion-in-a-gradle-plugin/35162
+        // It works for archiveFileName with Gradle 5.6.1+.
+        resetArchiveVersionToRubyStyle(this.getArchiveVersion());
+
         // Copying the source files into the working directory. Note that the Gem task should not have top-level `into`
         // because AbstractArchiveTask#into represents a destination directory *inside* the archive for the files.
         // https://docs.gradle.org/5.5.1/javadoc/org/gradle/api/tasks/bundling/AbstractArchiveTask.html#into-java.lang.Object-
@@ -286,6 +290,28 @@ class Gem extends AbstractArchiveTask {
 
     private static String renderList(final List<String> strings) {
         return String.join(", ", strings.stream().map(s -> "\"" + s + "\"").collect(Collectors.toList()));
+    }
+
+    private static void resetArchiveVersionToRubyStyle(final Property<String> archiveVersion) {
+        if (!archiveVersion.isPresent()) {
+            return;
+        }
+
+        final String lower = archiveVersion.get().toLowerCase();
+        if (archiveVersion.get().equals(lower) && !archiveVersion.get().contains("-")) {
+            return;
+        }
+
+        if (!lower.contains("-")) {
+            archiveVersion.set(lower);
+            return;
+        }
+
+        final ArrayList<String> rubyStyleVersionSplit = new ArrayList<>();
+        for (final String split : lower.split("-")) {
+            rubyStyleVersionSplit.add(split.toLowerCase());
+        }
+        archiveVersion.set(rubyStyleVersionSplit.stream().collect(Collectors.joining(".")));
     }
 
     private void cleanIfExists(final Project project) {
