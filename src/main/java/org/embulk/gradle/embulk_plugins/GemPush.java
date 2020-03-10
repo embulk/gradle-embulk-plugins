@@ -61,6 +61,10 @@ abstract class GemPush extends DefaultTask {
     public GemPush() {
         super();
 
+        this.getOutputs().upToDateWhen(task -> {
+            return false;
+        });
+
         final ObjectFactory objectFactory = this.getProject().getObjects();
         this.host = objectFactory.property(String.class);
 
