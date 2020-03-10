@@ -29,20 +29,16 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
-import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier;
-import org.gradle.api.artifacts.maven.Conf2ScopeMapping;
-import org.gradle.api.artifacts.maven.Conf2ScopeMappingContainer;
 import org.gradle.api.attributes.Usage;
 import org.gradle.api.component.AdhocComponentWithVariants;
 import org.gradle.api.component.SoftwareComponent;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPlugin;
-import org.gradle.api.plugins.MavenPlugin;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.Jar;
 
@@ -58,7 +54,6 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
     public void apply(final Project project) {
         // The "java" plugin is required to be applied so that the "runtime" configuration will be available.
         project.getPluginManager().apply(JavaPlugin.class);
-        project.getPluginManager().apply(MavenPlugin.class);
 
         createExtension(project);
 
