@@ -1,0 +1,53 @@
+plugins {
+    id "java"
+    id "maven-publish"
+    id "org.embulk.embulk-plugins"
+}
+
+group = "org.embulk.input.test5"
+archivesBaseName = "${project.name}"
+version = "0.1.41-SNAPSHOT"
+description = "Embulk input plugin for testing 5"
+
+repositories {
+    jcenter()
+}
+
+sourceCompatibility = "1.8"
+targetCompatibility = "1.8"
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+}
+
+dependencies {
+    compileOnly "org.embulk:embulk-core:0.9.17"
+}
+
+embulkPlugin {
+    mainClass = "org.embulk.input.test5.Test5InputPlugin"
+    category = "input"
+    type = "test5"
+}
+
+gem {
+    authors = [ "Somebody" ]
+    email = [ "somebody@example.com" ]
+    summary = "Dummy"
+    homepage = ""
+    licenses = [ ""]
+}
+
+publishing {
+    publications {
+        embulkPluginMaven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url = "${project.buildDir}/mavenLocal5"
+        }
+    }
+}
