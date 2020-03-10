@@ -1,0 +1,59 @@
+plugins {
+    id "java"
+    id "maven-publish"
+    id "org.embulk.embulk-plugins"
+}
+
+allprojects {
+    group = "org.embulk.input.test_subprojects"
+    version = "0.6.14"
+}
+archivesBaseName = "${project.name}"
+description = "Embulk input plugin for testing subprojects root"
+
+repositories {
+    jcenter()
+}
+
+allprojects {
+    sourceCompatibility = "1.8"
+    targetCompatibility = "1.8"
+
+    tasks.withType(JavaCompile) {
+        options.encoding = "UTF-8"
+        options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+    }
+}
+
+dependencies {
+    compileOnly "org.embulk:embulk-core:0.9.23"
+    compile project(":sublib")
+    compile "commons-io:commons-io:2.6"
+}
+
+embulkPlugin {
+    mainClass = "org.embulk.input.test_subprojects.SubprojectsRootInputPlugin"
+    category = "input"
+    type = "test_subprojects_root"
+}
+
+gem {
+    authors = [ "Somebody" ]
+    email = [ "somebody@example.com" ]
+    summary = "Dummy"
+    homepage = ""
+    licenses = [ "" ]
+}
+
+publishing {
+    publications {
+        embulkPluginMaven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url = "${rootProject.buildDir}/mavenLocalSubprojects"
+        }
+    }
+}
