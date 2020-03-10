@@ -2,6 +2,7 @@ plugins {
     id "java"
     id "maven"
     id "java-gradle-plugin"
+    id "checkstyle"
     id "com.gradle.plugin-publish" version "0.10.1"
 }
 
@@ -43,6 +44,16 @@ test {
 
 jar {
     from rootProject.file("LICENSE")
+}
+
+checkstyle {
+    toolVersion "8.23"
+    configFile = file("${projectDir}/config/checkstyle/checkstyle.xml")
+    configProperties = [
+        "checkstyle.config.path": file("${projectDir}/config/checkstyle")
+    ]
+    ignoreFailures = false
+    maxWarnings = 0
 }
 
 gradlePlugin {
