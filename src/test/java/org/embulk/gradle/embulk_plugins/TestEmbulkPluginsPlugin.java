@@ -19,6 +19,7 @@ package org.embulk.gradle.embulk_plugins;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -147,6 +148,59 @@ class TestEmbulkPluginsPlugin {
         assertTrue(Files.exists(projectDir.resolve("build/gems/embulk-input-test5-0.1.41.snapshot-java.gem")));
     }
 
+    @Test
+    public void testSubprojects(@TempDir Path tempDir) throws IOException {
+        final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-subprojects"));
+        final Path sublibDir = Files.createDirectory(projectDir.resolve("sublib"));
+        final Path subpluginDir = Files.createDirectory(projectDir.resolve("embulk-input-subprojects_subplugin"));
+        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("subprojects/build_root.gradle"),
+                   projectDir.resolve("build.gradle"));
+        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("subprojects/settings.gradle"),
+                   projectDir.resolve("settings.gradle"));
+        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("subprojects/build_sublib.gradle"),
+                   sublibDir.resolve("build.gradle"));
+        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("subprojects/build_subplugin.gradle"),
+                   subpluginDir.resolve("build.gradle"));
+
+        this.build(projectDir, ":dependencies", "--configuration", "embulkPluginRuntime", "--write-locks");
+        final Path rootLockfilePath = projectDir.resolve("gradle/dependency-locks/embulkPluginRuntime.lockfile");
+        for (final String line : Files.readAllLines(rootLockfilePath, StandardCharsets.UTF_8)) {
+            System.out.println(line);
+        }
+        assertTrue(Files.exists(rootLockfilePath));
+        assertFileDoesContain(rootLockfilePath, "commons-lang:commons-lang:2.6");
+        assertFileDoesContain(rootLockfilePath, "commons-io:commons-io:2.6");
+        assertFileDoesNotContain(rootLockfilePath, "org.embulk.input.test_subprojects:sublib:0.6.14");
+        assertFileDoesNotContain(rootLockfilePath, "org.apache.commons:commons-math3:3.6.1");
+
+        this.build(projectDir, ":embulk-input-subprojects_subplugin:dependencies", "--configuration", "embulkPluginRuntime", "--write-locks");
+        final Path subpluginLockfilePath = subpluginDir.resolve("gradle/dependency-locks/embulkPluginRuntime.lockfile");
+        for (final String line : Files.readAllLines(subpluginLockfilePath, StandardCharsets.UTF_8)) {
+            System.out.println(line);
+        }
+        assertTrue(Files.exists(subpluginLockfilePath));
+        assertFileDoesContain(subpluginLockfilePath, "commons-lang:commons-lang:2.6");
+        assertFileDoesContain(subpluginLockfilePath, "org.apache.commons:commons-math3:3.6.1");
+        assertFileDoesNotContain(subpluginLockfilePath, "org.embulk.input.test_subprojects:sublib:0.6.14");
+        assertFileDoesNotContain(subpluginLockfilePath, "commons-io:commons-io:2.6");
+
+        this.build(projectDir, "publishEmbulkPluginMavenPublicationToMavenRepository");
+
+        final Path rootVersionDir = projectDir.resolve("build/mavenLocalSubprojects/org/embulk/input/test_subprojects/embulk-input-subprojects_root/0.6.14");
+        final Path rootJarPath = rootVersionDir.resolve("embulk-input-subprojects_root-0.6.14.jar");
+        final Path rootPomPath = rootVersionDir.resolve("embulk-input-subprojects_root-0.6.14.pom");
+        assertTrue(Files.exists(rootJarPath));
+        assertTrue(Files.exists(rootPomPath));
+        assertPomSubprojectsRoot(rootPomPath);
+
+        final Path subVersionDir = projectDir.resolve("build/mavenLocalSubprojects/org/embulk/input/test_subprojects/embulk-input-subprojects_subplugin/0.6.14");
+        final Path subJarPath = subVersionDir.resolve("embulk-input-subprojects_subplugin-0.6.14.jar");
+        final Path subPomPath = subVersionDir.resolve("embulk-input-subprojects_subplugin-0.6.14.pom");
+        assertTrue(Files.exists(subJarPath));
+        assertTrue(Files.exists(subPomPath));
+        assertPomSubprojectsSubplugin(subPomPath);
+    }
+
     private static BuildResult build(final Path projectDir, final String... args) {
         final ArrayList<String> argsList = new ArrayList<>();
         argsList.addAll(Arrays.asList(args));
@@ -261,6 +315,127 @@ class TestEmbulkPluginsPlugin {
         assertSingleTextContentByTagName("0.2.8", project, "version");
 
         assertNoElementByTagName(project, "dependencies");  // No dependencies.
+    }
+
+    private static void assertPomSubprojectsRoot(final Path pomPath) throws IOException {
+        System.out.println("Generated POM :");
+        System.out.println("============================================================");
+        for (final String line : Files.readAllLines(pomPath, StandardCharsets.UTF_8)) {
+            System.out.println(line);
+        }
+        System.out.println("============================================================");
+
+        final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+
+        final DocumentBuilder builder;
+        try {
+            builder = factory.newDocumentBuilder();
+        } catch (final ParserConfigurationException ex) {
+            throw new IOException(ex);
+        }
+
+        final Document document;
+        try (final InputStream pomStream = Files.newInputStream(pomPath)) {
+            document = builder.parse(pomStream);
+        } catch (final SAXException ex) {
+            throw new IOException(ex);
+        }
+
+        assertEquals("1.0", document.getXmlVersion());
+        final Element project = document.getDocumentElement();
+        assertEquals("project", project.getTagName());
+        assertSingleTextContentByTagName("4.0.0", project, "modelVersion");
+        assertSingleTextContentByTagName("org.embulk.input.test_subprojects", project, "groupId");
+        assertSingleTextContentByTagName("embulk-input-subprojects_root", project, "artifactId");
+        assertSingleTextContentByTagName("0.6.14", project, "version");
+
+        final Element dependencies = getSingleElementByTagName(project, "dependencies");
+        final NodeList dependenciesEach = dependencies.getElementsByTagName("dependency");
+        assertEquals(3, dependenciesEach.getLength());
+
+        final Element dependency0 = (Element) dependenciesEach.item(0);
+        assertSingleTextContentByTagName("org.embulk.input.test_subprojects", dependency0, "groupId");
+        assertSingleTextContentByTagName("sublib", dependency0, "artifactId");
+        assertSingleTextContentByTagName("0.6.14", dependency0, "version");
+        assertSingleTextContentByTagName("compile", dependency0, "scope");
+
+        final Element dependency1 = (Element) dependenciesEach.item(1);
+        assertSingleTextContentByTagName("commons-io", dependency1, "groupId");
+        assertSingleTextContentByTagName("commons-io", dependency1, "artifactId");
+        assertSingleTextContentByTagName("2.6", dependency1, "version");
+        assertSingleTextContentByTagName("compile", dependency1, "scope");
+
+        final Element dependency2 = (Element) dependenciesEach.item(2);
+        assertSingleTextContentByTagName("commons-lang", dependency2, "groupId");
+        assertSingleTextContentByTagName("commons-lang", dependency2, "artifactId");
+        assertSingleTextContentByTagName("2.6", dependency2, "version");
+        assertSingleTextContentByTagName("runtime", dependency2, "scope");
+    }
+
+    private static void assertPomSubprojectsSubplugin(final Path pomPath) throws IOException {
+        System.out.println("Generated POM :");
+        System.out.println("============================================================");
+        for (final String line : Files.readAllLines(pomPath, StandardCharsets.UTF_8)) {
+            System.out.println(line);
+        }
+        System.out.println("============================================================");
+
+        final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+
+        final DocumentBuilder builder;
+        try {
+            builder = factory.newDocumentBuilder();
+        } catch (final ParserConfigurationException ex) {
+            throw new IOException(ex);
+        }
+
+        final Document document;
+        try (final InputStream pomStream = Files.newInputStream(pomPath)) {
+            document = builder.parse(pomStream);
+        } catch (final SAXException ex) {
+            throw new IOException(ex);
+        }
+
+        assertEquals("1.0", document.getXmlVersion());
+        final Element project = document.getDocumentElement();
+        assertEquals("project", project.getTagName());
+        assertSingleTextContentByTagName("4.0.0", project, "modelVersion");
+        assertSingleTextContentByTagName("org.embulk.input.test_subprojects", project, "groupId");
+        assertSingleTextContentByTagName("embulk-input-subprojects_subplugin", project, "artifactId");
+        assertSingleTextContentByTagName("0.6.14", project, "version");
+
+        final Element dependencies = getSingleElementByTagName(project, "dependencies");
+        final NodeList dependenciesEach = dependencies.getElementsByTagName("dependency");
+        assertEquals(3, dependenciesEach.getLength());
+
+        final Element dependency0 = (Element) dependenciesEach.item(0);
+        assertSingleTextContentByTagName("org.embulk.input.test_subprojects", dependency0, "groupId");
+        assertSingleTextContentByTagName("sublib", dependency0, "artifactId");
+        assertSingleTextContentByTagName("0.6.14", dependency0, "version");
+        assertSingleTextContentByTagName("compile", dependency0, "scope");
+
+        final Element dependency1 = (Element) dependenciesEach.item(1);
+        assertSingleTextContentByTagName("org.apache.commons", dependency1, "groupId");
+        assertSingleTextContentByTagName("commons-math3", dependency1, "artifactId");
+        assertSingleTextContentByTagName("3.6.1", dependency1, "version");
+        assertSingleTextContentByTagName("compile", dependency1, "scope");
+
+        final Element dependency2 = (Element) dependenciesEach.item(2);
+        assertSingleTextContentByTagName("commons-lang", dependency2, "groupId");
+        assertSingleTextContentByTagName("commons-lang", dependency2, "artifactId");
+        assertSingleTextContentByTagName("2.6", dependency2, "version");
+        assertSingleTextContentByTagName("runtime", dependency2, "scope");
+    }
+
+    private static void assertFileDoesContain(final Path path, final String expected) throws IOException {
+        try (final Stream<String> lines = Files.newBufferedReader(path).lines()) {
+            final boolean found = lines.filter(actualLine -> {
+                return actualLine.contains(expected);
+            }).findAny().isPresent();
+            if (!found) {
+                fail("\"" + path.toString() + "\" does not contain \"" + expected + "\".");
+            }
+        }
     }
 
     private static void assertFileDoesNotContain(final Path path, final String notExpected) throws IOException {

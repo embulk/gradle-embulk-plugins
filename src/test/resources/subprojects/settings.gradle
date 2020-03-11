@@ -1,0 +1,3 @@
+rootProject.name = "embulk-input-subprojects_root"
+include "sublib"
+include "embulk-input-subprojects_subplugin"
