@@ -11,7 +11,7 @@ plugins {
 
     // Once this Gradle plugin is applied, its transitive dependencies are automatically updated to be flattened.
     // The update affects the default `jar` task, and default Maven uploading mechanisms as well.
-    id "org.embulk.embulk-plugins" version "0.3.0"
+    id "org.embulk.embulk-plugins" version "0.4.1"
 }
 
 group = "com.example"
@@ -24,7 +24,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly "org.embulk:embulk-core:0.9.17"
+    compileOnly "org.embulk:embulk-core:0.9.23"
 
     // Take care that other dependencies do not have transitive dependencies to `embulk-core` and its dependencies.
     // You'll need to exclude those transitive dependencies explicitly in that case.
@@ -35,6 +35,11 @@ dependencies {
     // }
 
     testCompile "junit:junit:4.13"
+
+    // TODO: Remove them.
+    // These `testCompile` are a tentative workaround. It will be covered in Embulk core's testing mechanism.
+    testCompile "org.embulk:embulk-deps-buffer:0.9.23"
+    testCompile "org.embulk:embulk-deps-config:0.9.23"
 }
 
 embulkPlugin {
@@ -92,8 +97,7 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
 
 ### How to migrate old-style `build.gradle` of your Embulk plugins
 
-1. Upgrade your Gradle wrapper to `5.5.1`.
-    * This plugin does not work with Gradle 6 yet.
+1. Upgrade your Gradle wrapper to `6.0.1` or later.
 2. Define `group`, `version`, and `description` in your Gradle project.
     * `group` should **NOT** be `"org.embulk"` unless your project is under: https://github.com/embulk. For example:
       ```
@@ -217,7 +221,7 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
       ```
       plugins {
           id "maven-publish"
-          id "org.embulk.embulk-plugins" version "0.3.0"
+          id "org.embulk.embulk-plugins" version "0.4.1"
       }
     * Using [legacy plugin application](https://docs.gradle.org/current/userguide/plugins.html#sec:old_plugin_application):
       ```
@@ -228,7 +232,7 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
           }
       }
       dependencies {
-          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.3.0"
+          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.4.1"
       }
 
       apply plugin: "maven-publish"
