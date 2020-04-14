@@ -3,7 +3,7 @@ plugins {
     id "maven"
     id "java-gradle-plugin"
     id "checkstyle"
-    id "com.gradle.plugin-publish" version "0.10.1"
+    id "com.gradle.plugin-publish" version "0.11.0"
 }
 
 // This Gradle plugin is published under the group "gradle.plugin.org.embulk".
