@@ -169,6 +169,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             }
 
             for (final ResolvedDependency dependency : allDependencies.values()) {
+                final String dependencyConfiguration = dependency.getConfiguration();
                 final Set<ResolvedArtifact> moduleArtifacts = dependency.getModuleArtifacts();
 
                 final HashSet<String> types = new HashSet<>();
@@ -201,8 +202,15 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                     if (projects.size() > 1) {
                         throw new GradleException("Multiple projects are found in dependency: " + dependency.toString());
                     }
-                    dependencies.add(project.getDependencies().create(
-                                         project.project(projects.iterator().next().getProjectPath())));
+                    final ProjectComponentIdentifier projectIdentifier = projects.iterator().next();
+
+                    final HashMap<String, String> notation = new HashMap<>();
+                    notation.put("path", projectIdentifier.getProjectPath());
+                    // TODO: Find a better way to decide whether to add "configuration" or not.
+                    if (dependencyConfiguration != null && !dependencyConfiguration.isEmpty()) {
+                        notation.put("configuration", dependencyConfiguration);
+                    }
+                    dependencies.add(project.getDependencies().create(project.getDependencies().project(notation)));
                 } else if (types.contains("module")) {
                     final HashMap<String, String> notation = new HashMap<>();
                     notation.put("group", dependency.getModuleGroup());

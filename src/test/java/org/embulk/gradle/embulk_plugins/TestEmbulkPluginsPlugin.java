@@ -26,8 +26,11 @@ import java.io.InputStream;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
@@ -184,13 +187,25 @@ class TestEmbulkPluginsPlugin {
         assertFileDoesNotContain(subpluginLockfilePath, "org.embulk.input.test_subprojects:sublib:0.6.14");
         assertFileDoesNotContain(subpluginLockfilePath, "commons-io:commons-io:2.6");
 
-        this.build(projectDir, "publishEmbulkPluginMavenPublicationToMavenRepository");
+        this.build(projectDir, "publishEmbulkPluginMavenPublicationToMavenRepository", ":gem", ":embulk-input-subprojects_subplugin:gem");
 
         final Path rootVersionDir = projectDir.resolve("build/mavenLocalSubprojects/org/embulk/input/test_subprojects/embulk-input-subprojects_root/0.6.14");
         final Path rootJarPath = rootVersionDir.resolve("embulk-input-subprojects_root-0.6.14.jar");
         final Path rootPomPath = rootVersionDir.resolve("embulk-input-subprojects_root-0.6.14.pom");
         assertTrue(Files.exists(rootJarPath));
         assertTrue(Files.exists(rootPomPath));
+        Files.walkFileTree(projectDir.resolve("build/gemContents"), new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
+                    System.out.println(projectDir.relativize(file));
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        assertTrue(Files.exists(projectDir.resolve("build/gemContents/lib/embulk/input/test_subprojects_root.rb")));
+        assertTrue(Files.exists(projectDir.resolve("build/gemContents/classpath/commons-io-2.6.jar")));
+        assertTrue(Files.exists(projectDir.resolve("build/gemContents/classpath/commons-lang-2.6.jar")));
+        assertTrue(Files.exists(projectDir.resolve("build/gemContents/classpath/embulk-input-subprojects_root-0.6.14.jar")));
+        assertTrue(Files.exists(projectDir.resolve("build/gemContents/classpath/sublib-0.6.14.jar")));
         assertPomSubprojectsRoot(rootPomPath);
 
         final Path subVersionDir = projectDir.resolve("build/mavenLocalSubprojects/org/embulk/input/test_subprojects/embulk-input-subprojects_subplugin/0.6.14");
@@ -198,6 +213,18 @@ class TestEmbulkPluginsPlugin {
         final Path subPomPath = subVersionDir.resolve("embulk-input-subprojects_subplugin-0.6.14.pom");
         assertTrue(Files.exists(subJarPath));
         assertTrue(Files.exists(subPomPath));
+        Files.walkFileTree(projectDir.resolve("embulk-input-subprojects_subplugin/build/gemContents"), new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
+                    System.out.println(projectDir.relativize(file));
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        assertTrue(Files.exists(projectDir.resolve("embulk-input-subprojects_subplugin/build/gemContents/lib/embulk/input/test_subprojects_sub.rb")));
+        assertTrue(Files.exists(projectDir.resolve("embulk-input-subprojects_subplugin/build/gemContents/classpath/commons-lang-2.6.jar")));
+        assertTrue(Files.exists(projectDir.resolve("embulk-input-subprojects_subplugin/build/gemContents/classpath/commons-math3-3.6.1.jar")));
+        assertTrue(Files.exists(projectDir.resolve("embulk-input-subprojects_subplugin/build/gemContents/classpath/embulk-input-subprojects_subplugin-0.6.14.jar")));
+        assertTrue(Files.exists(projectDir.resolve("embulk-input-subprojects_subplugin/build/gemContents/classpath/sublib-0.6.14.jar")));
         assertPomSubprojectsSubplugin(subPomPath);
     }
 
@@ -351,7 +378,7 @@ class TestEmbulkPluginsPlugin {
 
         final Element dependencies = getSingleElementByTagName(project, "dependencies");
         final NodeList dependenciesEach = dependencies.getElementsByTagName("dependency");
-        assertEquals(3, dependenciesEach.getLength());
+        assertEquals(4, dependenciesEach.getLength());
 
         final Element dependency0 = (Element) dependenciesEach.item(0);
         assertSingleTextContentByTagName("org.embulk.input.test_subprojects", dependency0, "groupId");
@@ -365,11 +392,20 @@ class TestEmbulkPluginsPlugin {
         assertSingleTextContentByTagName("2.6", dependency1, "version");
         assertSingleTextContentByTagName("compile", dependency1, "scope");
 
+        // It is almost the same as dependency0. The only difference is "scope". It does not cause an immediate problem.
+        // It looks like a problem of Gradle's POM generation with project reference (`compile project(":subproject")`).
+        // TODO: Investigate the reason deep inside Gradle, and fix it.
         final Element dependency2 = (Element) dependenciesEach.item(2);
-        assertSingleTextContentByTagName("commons-lang", dependency2, "groupId");
-        assertSingleTextContentByTagName("commons-lang", dependency2, "artifactId");
-        assertSingleTextContentByTagName("2.6", dependency2, "version");
+        assertSingleTextContentByTagName("org.embulk.input.test_subprojects", dependency2, "groupId");
+        assertSingleTextContentByTagName("sublib", dependency2, "artifactId");
+        assertSingleTextContentByTagName("0.6.14", dependency2, "version");
         assertSingleTextContentByTagName("runtime", dependency2, "scope");
+
+        final Element dependency3 = (Element) dependenciesEach.item(3);
+        assertSingleTextContentByTagName("commons-lang", dependency3, "groupId");
+        assertSingleTextContentByTagName("commons-lang", dependency3, "artifactId");
+        assertSingleTextContentByTagName("2.6", dependency3, "version");
+        assertSingleTextContentByTagName("runtime", dependency3, "scope");
     }
 
     private static void assertPomSubprojectsSubplugin(final Path pomPath) throws IOException {
@@ -406,7 +442,7 @@ class TestEmbulkPluginsPlugin {
 
         final Element dependencies = getSingleElementByTagName(project, "dependencies");
         final NodeList dependenciesEach = dependencies.getElementsByTagName("dependency");
-        assertEquals(3, dependenciesEach.getLength());
+        assertEquals(4, dependenciesEach.getLength());
 
         final Element dependency0 = (Element) dependenciesEach.item(0);
         assertSingleTextContentByTagName("org.embulk.input.test_subprojects", dependency0, "groupId");
@@ -420,11 +456,20 @@ class TestEmbulkPluginsPlugin {
         assertSingleTextContentByTagName("3.6.1", dependency1, "version");
         assertSingleTextContentByTagName("compile", dependency1, "scope");
 
+        // It is almost the same as dependency0. The only difference is "scope". It does not cause an immediate problem.
+        // It looks like a problem of Gradle's POM generation with project reference (`compile project(":subproject")`).
+        // TODO: Investigate the reason deep inside Gradle, and fix it.
         final Element dependency2 = (Element) dependenciesEach.item(2);
-        assertSingleTextContentByTagName("commons-lang", dependency2, "groupId");
-        assertSingleTextContentByTagName("commons-lang", dependency2, "artifactId");
-        assertSingleTextContentByTagName("2.6", dependency2, "version");
+        assertSingleTextContentByTagName("org.embulk.input.test_subprojects", dependency2, "groupId");
+        assertSingleTextContentByTagName("sublib", dependency2, "artifactId");
+        assertSingleTextContentByTagName("0.6.14", dependency2, "version");
         assertSingleTextContentByTagName("runtime", dependency2, "scope");
+
+        final Element dependency3 = (Element) dependenciesEach.item(3);
+        assertSingleTextContentByTagName("commons-lang", dependency3, "groupId");
+        assertSingleTextContentByTagName("commons-lang", dependency3, "artifactId");
+        assertSingleTextContentByTagName("2.6", dependency3, "version");
+        assertSingleTextContentByTagName("runtime", dependency3, "scope");
     }
 
     private static void assertFileDoesContain(final Path path, final String expected) throws IOException {
