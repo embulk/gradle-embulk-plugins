@@ -202,6 +202,10 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                     if (projects.size() > 1) {
                         throw new GradleException("Multiple projects are found in dependency: " + dependency.toString());
                     }
+                    if (projects.isEmpty()) {
+                        throw new IllegalStateException(
+                                "Internal error which must not happen: projects is empty while tasks has \"project\".");
+                    }
                     final ProjectComponentIdentifier projectIdentifier = projects.iterator().next();
 
                     final HashMap<String, String> notation = new HashMap<>();
