@@ -1,6 +1,0 @@
-language: java
-jdk:
-  - openjdk8
-
-# Travis CI is to be configured to build only pushed branches, not pull requests.
-# See: https://travis-ci.org/embulk/gradle-embulk-plugins/settings
