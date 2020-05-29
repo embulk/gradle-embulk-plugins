@@ -46,6 +46,8 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.gradle.testkit.runner.BuildResult;
 import org.gradle.testkit.runner.GradleRunner;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -53,8 +55,17 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+/**
+ * Tests the Embulk plugins Gradle plugin by {@code org.gradle.testkit.runner.GradleRunner}.
+ *
+ * <p>Those tests are tentatively disabled on Windows. {@code GradleRunner} may keep some related files open.
+ * It prevents JUnit 5 from removing the temporary directory ({@code TempDir}).
+ *
+ * @see <a href="https://github.com/embulk/gradle-embulk-plugins/runs/719452273">A failed test</a>
+ */
 class TestEmbulkPluginsPlugin {
     @Test
+    @DisabledOnOs(OS.WINDOWS)
     public void testPublish(@TempDir Path tempDir) throws IOException {
         final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test1"));
         Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build.gradle"),
@@ -74,6 +85,7 @@ class TestEmbulkPluginsPlugin {
     }
 
     @Test
+    @DisabledOnOs(OS.WINDOWS)
     public void testEmbulkPluginRuntimeConfiguration(@TempDir Path tempDir) throws IOException {
         final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test2"));
         Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build2.gradle"),
@@ -86,6 +98,7 @@ class TestEmbulkPluginsPlugin {
     }
 
     @Test
+    @DisabledOnOs(OS.WINDOWS)
     public void testVariableMainJar(@TempDir Path tempDir) throws IOException {
         final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test3"));
         Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build3.gradle"),
@@ -122,6 +135,7 @@ class TestEmbulkPluginsPlugin {
     }
 
     @Test
+    @DisabledOnOs(OS.WINDOWS)
     public void testNoGenerateRubyCode(@TempDir Path tempDir) throws IOException {
         final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test4"));
         Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build4.gradle"),
@@ -141,6 +155,7 @@ class TestEmbulkPluginsPlugin {
     }
 
     @Test
+    @DisabledOnOs(OS.WINDOWS)
     public void testRubyVersion(@TempDir Path tempDir) throws IOException {
         final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test5"));
         Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build5.gradle"),
@@ -152,6 +167,7 @@ class TestEmbulkPluginsPlugin {
     }
 
     @Test
+    @DisabledOnOs(OS.WINDOWS)
     public void testSubprojects(@TempDir Path tempDir) throws IOException {
         final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-subprojects"));
         final Path sublibDir = Files.createDirectory(projectDir.resolve("sublib"));
