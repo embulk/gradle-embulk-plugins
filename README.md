@@ -124,6 +124,7 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
           exclude group: "javax.inject", module: "javax.inject"  // embulk-core depends on javax.inject.
       }
       ```
+      * If a dependency needs to be duplicated intentionally, add `ignoreConflicts` in the `embulkPlugins` block. See below.
 4. Add required `testCompile` if depending on `embulk-core:0.9.22+`.
     * If depending on `embulk-core:0.9.22`:
       ```
@@ -255,6 +256,18 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
         category = "input"
         type = "dummy"
     }
+    * If a dependency (or dependencies) needs to be duplicated intentionally, add `ignoreConflicts` here in the `embulkPlugin` task like below. It does not affect any deliverable although it shows to ignore the conflict(s) in the related warning message.
+      ```
+      embulkPlugin {
+          mainClass = "org.embulk.input.dummy.DummyInputPlugin"
+          category = "input"
+          type = "dummy"
+          ignoreConflicts = [
+              [ group: "javax.inject", module: "javax.inject" ],
+              ...
+          ]
+      }
+      ```
 11. Configure publishing the plugin JAR to the Maven repository where you want to upload.
     * The standard `jar` task is already reconfigured to generate a JAR ready as an Embulk plugin.
     * Note that `uploadArchives` with the `maven` plugin is no longer supported.

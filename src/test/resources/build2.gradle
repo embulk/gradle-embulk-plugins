@@ -27,12 +27,19 @@ dependencies {
     compile("org.glassfish.jersey.core:jersey-client:2.25.1") {
         exclude group: "javax.inject", module: "javax.inject"
     }
+    compile("org.apache.bval:bval-jsr303:0.5") {
+        exclude group: "org.apache.commons", module: "commons-lang3"
+    }
 }
 
 embulkPlugin {
     mainClass = "org.embulk.input.test1.Test1InputPlugin"
     category = "input"
     type = "test1"
+    ignoreConflicts = [
+        [ group: "org.apache.bval", module: "bval-core" ],
+        [ group: "commons-beanutils", module: "commons-beanutils-core" ],
+    ]
 }
 
 publishing {

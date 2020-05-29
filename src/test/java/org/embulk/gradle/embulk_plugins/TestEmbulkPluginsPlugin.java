@@ -95,6 +95,9 @@ class TestEmbulkPluginsPlugin {
         final Path lockfilePath = projectDir.resolve("gradle/dependency-locks/embulkPluginRuntime.lockfile");
         assertTrue(Files.exists(lockfilePath));
         assertFileDoesNotContain(lockfilePath, "javax.inject:javax.inject");
+        assertFileDoesNotContain(lockfilePath, "org.apache.commons:commons-lang3");
+        assertFileDoesContain(lockfilePath, "org.apache.bval:bval-jsr303");
+        assertFileDoesContain(lockfilePath, "org.apache.bval:bval-core");
     }
 
     @Test
