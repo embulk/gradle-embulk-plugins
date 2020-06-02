@@ -20,10 +20,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 
 /**
@@ -36,6 +38,9 @@ import org.gradle.api.provider.Property;
  *     category = "input"
  *     type = "example"
  *     // mainJar = "shadowJar"
+ *     ignoreConflicts = [
+ *         [ group: "...", module: "..." ]
+ *     ]
  * }}</pre>
  */
 public class EmbulkPluginExtension {
@@ -47,6 +52,7 @@ public class EmbulkPluginExtension {
         this.category = objectFactory.property(String.class);
         this.type = objectFactory.property(String.class);
         this.mainJar = objectFactory.property(String.class);
+        this.ignoreConflicts = castedListProperty(objectFactory);
     }
 
     public Property<String> getMainClass() {
@@ -63,6 +69,10 @@ public class EmbulkPluginExtension {
 
     public Property<String> getMainJar() {
         return this.mainJar;
+    }
+
+    public ListProperty<Map<String, String>> getIgnoreConflicts() {
+        return this.ignoreConflicts;
     }
 
     void checkValidity() {
@@ -88,6 +98,36 @@ public class EmbulkPluginExtension {
                     "Failed to configure \"embulkPlugin\" because \"category\" must be one of: [ "
                     + String.join(", ", CATEGORIES_ARRAY) + " ]");
         }
+
+        if (this.ignoreConflicts.isPresent() && !this.ignoreConflicts.get().isEmpty()) {
+            for (final Map<String, String> module : this.ignoreConflicts.get()) {
+                try {
+                    for (final Map.Entry<String, String> moduleAttribute : module.entrySet()) {
+                        // Calling getKey() and getValue() to trigger type checks.
+                        final String key = moduleAttribute.getKey();
+                        final String value = moduleAttribute.getValue();
+                    }
+                } catch (final ClassCastException ex) {
+                    throw new GradleException(
+                            "Failed to configure \"embulkPlugin\" because \"ignoreConflicts\" does not consist only of "
+                            + "String:String Maps.", ex);
+                }
+
+                final Set<String> moduleKeys = module.keySet();
+                if (moduleKeys.size() != 2 || (!moduleKeys.contains("group")) || (!moduleKeys.contains("module"))) {
+                    throw new GradleException(
+                            "Failed to configure \"embulkPlugin\" because \"ignoreConflicts\"'s Map does not consist only of "
+                            + "\"group\" and \"module\".");
+                }
+            }
+
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T castedListProperty(final ObjectFactory objectFactory) {
+        final T casted = (T) objectFactory.listProperty(Map.class);
+        return casted;
     }
 
     private static final String[] CATEGORIES_ARRAY = {
@@ -109,4 +149,5 @@ public class EmbulkPluginExtension {
     private final Property<String> category;
     private final Property<String> type;
     private final Property<String> mainJar;
+    private final ListProperty<Map<String, String>> ignoreConflicts;
 }

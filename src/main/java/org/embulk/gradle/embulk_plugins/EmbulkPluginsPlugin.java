@@ -41,6 +41,7 @@ import org.gradle.api.component.SoftwareComponent;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.Jar;
 
@@ -106,7 +107,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
         configureJarTask(project, extension);
 
-        warnIfRuntimeHasCompileOnlyDependencies(project, alternativeRuntimeConfiguration);
+        warnIfRuntimeHasCompileOnlyDependencies(project, alternativeRuntimeConfiguration, extension);
 
         configureGemTasks(project, extension, alternativeRuntimeConfiguration);
 
@@ -276,7 +277,10 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
     private static void warnIfRuntimeHasCompileOnlyDependencies(
             final Project project,
-            final Configuration alternativeRuntimeConfiguration) {
+            final Configuration alternativeRuntimeConfiguration,
+            final EmbulkPluginExtension extension) {
+        final Set<String> ignoreConflicts = setOfIgnoreConflicts(extension.getIgnoreConflicts());
+
         final Configuration compileOnlyConfiguration = project.getConfigurations().getByName("compileOnly");
 
         final Map<String, ResolvedDependency> compileOnlyDependencies =
@@ -297,7 +301,11 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                     + "\n"
                     + intersects.stream().map(key -> {
                         final ResolvedDependency dependency = alternativeRuntimeDependencies.get(key);
-                        return "  \"" + dependency.getModule().toString() + "\"\n";
+                        if (ignoreConflicts.contains(dependency.getModuleGroup() + ":" + dependency.getModuleName())) {
+                            return "  ([IGNORE IT] \"" + dependency.getModule().toString() + "\")\n";
+                        } else {
+                            return "  \"" + dependency.getModule().toString() + "\"\n";
+                        }
                     }).collect(Collectors.joining(""))
                     + "\n"
                     + "  \"compileOnly\" dependencies are used to represent Embulk's core to be \"provided\" at runtime.\n"
@@ -359,6 +367,16 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                 task.getGem().set(gemTask.get().getArchiveFile());
             }
         });
+    }
+
+    private static Set<String> setOfIgnoreConflicts(final ListProperty<Map<String, String>> ignoreConflicts) {
+        final HashSet<String> result = new HashSet<String>();
+        if (ignoreConflicts.isPresent() && !ignoreConflicts.get().isEmpty()) {
+            for (final Map<String, String> module : ignoreConflicts.get()) {
+                result.add(module.get("group") + ":" + module.get("module"));
+            }
+        }
+        return Collections.unmodifiableSet(result);
     }
 
     private static String buildGemVersionFromMavenVersion(final String mavenVersion) {
