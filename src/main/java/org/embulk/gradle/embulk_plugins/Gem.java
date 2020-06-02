@@ -31,6 +31,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import javax.inject.Inject;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
@@ -397,7 +399,7 @@ class Gem extends AbstractArchiveTask {
         writer.println("    spec.authors       = [" + renderList(this.authors.get()) + "]");
         writer.println("    spec.files         = [");
         for (final Path file : files) {
-            writer.println("        \"" + file.toString() + "\",");
+            writer.println("        \"" + pathToStringWithSlashes(file) + "\",");
         }
         writer.println("    ]");
         writer.println("    spec.name          = \"" + this.getArchiveBaseName().get() + "\"");
@@ -451,6 +453,30 @@ class Gem extends AbstractArchiveTask {
         // rubygems_version
         // signing_key
         writer.println("end");
+    }
+
+    static String pathToStringWithSlashesForTesting(final Path path) {
+        return pathToStringWithSlashes(path);
+    }
+
+    /**
+     * Convert the specified path to String, always separated with {@code "/"} even in Windows.
+     */
+    private static String pathToStringWithSlashes(final Path path) {
+        if (File.separatorChar == '/') {
+            return path.toString();
+        }
+
+        final StringBuilder builder = new StringBuilder();
+
+        final Path root = path.getRoot();
+        if (root != null) {
+            builder.append(root.toString().replace(File.separatorChar, '/'));
+        }
+
+        final Stream<Path> pathElementStream = StreamSupport.stream(path.spliterator(), false);
+        builder.append(pathElementStream.map(pathElement -> pathElement.toString()).collect(Collectors.joining("/")));
+        return builder.toString();
     }
 
     private final Property<String> embulkPluginMainClass;
