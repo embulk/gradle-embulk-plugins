@@ -62,6 +62,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
         project.getTasks().create("gem", Gem.class);
         project.getTasks().create("gemPush", GemPush.class);
+        // project.getTasks().create("newEmbulkPlugin", NewEmbulkPlugin.class, project);
 
         final Configuration runtimeConfiguration = project.getConfigurations().getByName("runtime");
 
