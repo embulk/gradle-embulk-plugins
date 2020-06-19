@@ -250,12 +250,13 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
       ```
 10. Configure the task `embulkPlugin`.
     * `mainClass`, `category`, and `type` are mandatory. For example:
-    ```
-    embulkPlugin {
-        mainClass = "org.embulk.input.dummy.DummyInputPlugin"
-        category = "input"
-        type = "dummy"
-    }
+      ```
+      embulkPlugin {
+          mainClass = "org.embulk.input.dummy.DummyInputPlugin"
+          category = "input"
+          type = "dummy"
+      }
+      ```
     * If a dependency (or dependencies) needs to be duplicated intentionally, add `ignoreConflicts` here in the `embulkPlugin` task like below. It does not affect any deliverable although it shows to ignore the conflict(s) in the related warning message.
       ```
       embulkPlugin {
