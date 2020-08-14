@@ -11,7 +11,7 @@ plugins {
 
     // Once this Gradle plugin is applied, its transitive dependencies are automatically updated to be flattened.
     // The update affects the default `jar` task, and default Maven uploading mechanisms as well.
-    id "org.embulk.embulk-plugins" version "0.4.1"
+    id "org.embulk.embulk-plugins" version "0.4.2"
 }
 
 group = "com.example"
@@ -24,7 +24,9 @@ repositories {
 }
 
 dependencies {
-    compileOnly "org.embulk:embulk-core:0.9.23"
+    compileOnly "org.embulk:embulk-api:0.10.10"
+    compileOnly "org.embulk:embulk-spi:0.10.10"
+    compileOnly "org.embulk:embulk-core:0.10.10"
 
     // Take care that other dependencies do not have transitive dependencies to `embulk-core` and its dependencies.
     // You'll need to exclude those transitive dependencies explicitly in that case.
@@ -36,10 +38,13 @@ dependencies {
 
     testCompile "junit:junit:4.13"
 
+    testCompile "org.embulk:embulk-api:0.10.10"
+    testCompile "org.embulk:embulk-spi:0.10.10"
+    testCompile "org.embulk:embulk-core:0.10.10"
+
     // TODO: Remove them.
     // These `testCompile` are a tentative workaround. It will be covered in Embulk core's testing mechanism.
-    testCompile "org.embulk:embulk-deps-buffer:0.9.23"
-    testCompile "org.embulk:embulk-deps-config:0.9.23"
+    testCompile "org.embulk:embulk-deps:0.10.10"
 }
 
 embulkPlugin {
@@ -114,6 +119,26 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
     * New:
       ```
       compileOnly "org.embulk:embulk-core:0.9.17"
+
+      testCompile "org.embulk:embulk-core:0.9.17"
+      ```
+    * If depending on `0.10.2` - `0.10.6`:
+      ```
+      compileOnly "org.embulk:embulk-api:0.10.2"
+      compileOnly "org.embulk:embulk-core:0.10.2"
+
+      testCompile "org.embulk:embulk-api:0.10.2"
+      testCompile "org.embulk:embulk-core:0.10.2"
+      ```
+    * If depending on `0.10.7`+:
+      ```
+      compileOnly "org.embulk:embulk-api:0.10.7"
+      compileOnly "org.embulk:embulk-spi:0.10.7"
+      compileOnly "org.embulk:embulk-core:0.10.7"
+
+      testCompile "org.embulk:embulk-api:0.10.7"
+      testCompile "org.embulk:embulk-spi:0.10.7"
+      testCompile "org.embulk:embulk-core:0.10.7"
       ```
     * Take care that **other dependencies do not have transitive dependencies to `embulk-core` and its dependencies**. You'll need to exclude it explicitly those transitive dependencies explicitly in that case. For example:
       ```
@@ -132,12 +157,18 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
       // This `testCompile` is a tentative workaround. It will be covered in Embulk core's testing mechanism.
       testCompile "org.embulk:embulk-deps-buffer:0.9.22"
       ```
-    * If depending on `embulk-core:0.9.23`:
+    * If depending on `embulk-core:0.9.23` - `embulk-core:0.10.9`:
       ```
       // TODO: Remove them.
       // These `testCompile` are a tentative workaround. It will be covered in Embulk core's testing mechanism.
       testCompile "org.embulk:embulk-deps-buffer:0.9.23"
       testCompile "org.embulk:embulk-deps-config:0.9.23"
+      ```
+    * If depending on `embulk-core:0.10.10`+:
+      ```
+      // TODO: Remove them.
+      // These `testCompile` are a tentative workaround. It will be covered in Embulk core's testing mechanism.
+      testCompile "org.embulk:embulk-deps:0.10.10"
       ```
 5. **Remove** an unnecessary configuration.
     * `provided`
@@ -222,7 +253,7 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
       ```
       plugins {
           id "maven-publish"
-          id "org.embulk.embulk-plugins" version "0.4.1"
+          id "org.embulk.embulk-plugins" version "0.4.2"
       }
     * Using [legacy plugin application](https://docs.gradle.org/current/userguide/plugins.html#sec:old_plugin_application):
       ```
@@ -233,7 +264,7 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
           }
       }
       dependencies {
-          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.4.1"
+          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.4.2"
       }
 
       apply plugin: "maven-publish"
