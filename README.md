@@ -20,16 +20,22 @@ description = "An Embulk plugin to load example data."
 
 repositories {
     mavenCentral()
-    jcenter()
+    // jcenter() is no longer needed if depending only on 0.10.29+.
 }
 
 dependencies {
     compileOnly "org.embulk:embulk-api:0.10.29"
     compileOnly "org.embulk:embulk-spi:0.10.29"
 
-    // If your Embulk plugin is in the "v0.10-style", and "v0.11-ready", it should not depend on "embulk-core".
+    // It should not depend on "embulk-core" if your Embulk plugin is in the new "v0.10-style".
     // Depending on "embulk-core" is allowed only in the old "v0.9-style" Embulk plugins.
     // compileOnly "org.embulk:embulk-core:0.10.29"
+
+    // It should depend some of "embulk-util-*" librarires if your plugin is in the new "v0.10-style".
+    // "embulk-util-config" is often mandatory.
+    // Note that your plugin should basically work with Embulk v0.9.23 even in the "v0.10-style".
+    compile "org.embulk:embulk-util-config:0.2.1"
+    // ...
 
     // Take care that other dependencies do not have transitive dependencies to `embulk-core` and its dependencies.
     // You'll need to exclude those transitive dependencies explicitly in that case.
@@ -114,18 +120,18 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
       description = "An Embulk plugin to load example data."
       ```
 3. Replace `compile` and `provided` in your dependencies to `compileOnly`.
-    * Old (before this Gradle plugin):
+    * Old (without this Gradle plugin):
       ```
       compile "org.embulk:embulk-core:0.9.23"
       provided "org.embulk:embulk-core:0.9.23"
       ```
-    * Newer (with this Gradle plugin, but still in Embulk "v0.9-style"):
+    * Newer (with this Gradle plugin, but still in the "v0.9-style"):
       ```
       compileOnly "org.embulk:embulk-core:0.9.23"
 
       testCompile "org.embulk:embulk-core:0.9.23"
       ```
-    * New (Embulk "v0.10-style"):
+    * New (with this Gradle plugin in the "v0.10-style"):
       ```
       compileOnly "org.embulk:embulk-api:0.10.29"
       compileOnly "org.embulk:embulk-spi:0.10.29"
@@ -133,6 +139,7 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
       testCompile "org.embulk:embulk-api:0.10.29"
       testCompile "org.embulk:embulk-spi:0.10.29"
       testCompile "org.embulk:embulk-core:0.10.29"
+      testCompile "org.embulk:embulk-deps:0.10.29"
       ```
     * Take care that **other dependencies do not have transitive dependencies to `embulk-core` and its dependencies**. You'll need to exclude it explicitly those transitive dependencies explicitly in that case. For example:
       ```
