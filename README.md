@@ -151,7 +151,7 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
       // This `testCompile` is a tentative workaround. It will be covered in Embulk core's testing mechanism.
       testCompile "org.embulk:embulk-deps-buffer:0.9.22"
       ```
-    * If tests depend `embulk-core:0.9.23` - `embulk-core:0.10.9`:
+    * If tests depend `embulk-core:0.9.23` (or 0.10 until `embulk-core:0.10.9`):
       ```
       // TODO: Remove them.
       // These `testCompile` are a tentative workaround. It will be covered in Embulk core's testing mechanism.
