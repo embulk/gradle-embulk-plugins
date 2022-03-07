@@ -98,6 +98,10 @@ class TestEmbulkPluginsPlugin {
         assertFileDoesNotContain(lockfilePath, "org.apache.commons:commons-lang3");
         assertFileDoesContain(lockfilePath, "org.apache.bval:bval-jsr303");
         assertFileDoesContain(lockfilePath, "org.apache.bval:bval-core");
+        assertFileDoesContain(lockfilePath, "com.github.jnr:jffi:1.2.23");
+
+        // .lockfile does not contain classifiers by its definition.
+        assertFileDoesNotContain(lockfilePath, "com.github.jnr:jffi:1.2.23:native");
     }
 
     @Test
@@ -155,6 +159,23 @@ class TestEmbulkPluginsPlugin {
                 projectDir.resolve("build/gemContents/lib/embulk/input/test4.rb"), StandardCharsets.UTF_8);
         assertEquals(1, lines.size());
         assertEquals("puts \"test\"", lines.get(0));
+
+        final Path classpathDir = projectDir.resolve("build/gemContents/classpath");
+        Files.walkFileTree(classpathDir, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
+                    System.out.println(projectDir.relativize(file));
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        final Path pluginJarPath = classpathDir.resolve("embulk-input-test4-0.9.2.jar");
+        final Path jsonApiJarPath = classpathDir.resolve("javax.json-api-1.1.4.jar");
+        final Path jffiJarPath = classpathDir.resolve("jffi-1.2.23.jar");
+        final Path jffiNativeJarPath = classpathDir.resolve("jffi-1.2.23-native.jar");
+        assertTrue(Files.exists(pluginJarPath));
+        assertTrue(Files.exists(jsonApiJarPath));
+        assertTrue(Files.exists(jffiJarPath));
+        assertTrue(Files.exists(jffiNativeJarPath));
     }
 
     @Test
@@ -251,6 +272,7 @@ class TestEmbulkPluginsPlugin {
         final ArrayList<String> argsList = new ArrayList<>();
         argsList.addAll(Arrays.asList(args));
         argsList.add("--stacktrace");
+        argsList.add("--info");
         final BuildResult result = newGradleRunner(projectDir, argsList).build();
         System.out.println("Running 'gradle " + String.join(" ", argsList) + "' :");
         System.out.println("============================================================");
@@ -307,7 +329,12 @@ class TestEmbulkPluginsPlugin {
 
         final Element dependencies = getSingleElementByTagName(project, "dependencies");
         final NodeList dependenciesEach = dependencies.getElementsByTagName("dependency");
-        assertEquals(2, dependenciesEach.getLength());
+
+        // In case of a dependency with a classifier, "compile" and "runtime" are duplicated.
+        // The behavior is not intended, not very good, but acceptable as of now.
+        //
+        // TODO: Upgrade the base Gradle, and test it in later Gradle.
+        assertEquals(6, dependenciesEach.getLength());
 
         // "org.apache.commons:commons-text:1.7" => originally in build.gradle as "compile".
         // It depends on "org.apache.commons:commons-lang3:3.9".
@@ -320,12 +347,44 @@ class TestEmbulkPluginsPlugin {
         assertSingleTextContentByTagName("1.7", dependency0, "version");
         assertSingleTextContentByTagName("compile", dependency0, "scope");
 
-        // "org.apache.commons:commons-lang3:3.9" => added by the Gradle plugin as "runtime".
+        // "com.github.jnr:jffi:1.2.23" => originally in build.gradle as "compile".
         final Element dependency1 = (Element) dependenciesEach.item(1);
-        assertSingleTextContentByTagName("org.apache.commons", dependency1, "groupId");
-        assertSingleTextContentByTagName("commons-lang3", dependency1, "artifactId");
-        assertSingleTextContentByTagName("3.9", dependency1, "version");
-        assertSingleTextContentByTagName("runtime", dependency1, "scope");
+        assertSingleTextContentByTagName("com.github.jnr", dependency1, "groupId");
+        assertSingleTextContentByTagName("jffi", dependency1, "artifactId");
+        assertSingleTextContentByTagName("1.2.23", dependency1, "version");
+        assertNoElement(dependency1, "classifier");
+        assertSingleTextContentByTagName("compile", dependency1, "scope");
+
+        // "com.github.jnr:jffi:1.2.23:native" => originally in build.gradle as "compile".
+        final Element dependency2 = (Element) dependenciesEach.item(2);
+        assertSingleTextContentByTagName("com.github.jnr", dependency2, "groupId");
+        assertSingleTextContentByTagName("jffi", dependency2, "artifactId");
+        assertSingleTextContentByTagName("1.2.23", dependency2, "version");
+        assertSingleTextContentByTagName("native", dependency2, "classifier");
+        assertSingleTextContentByTagName("compile", dependency2, "scope");
+
+        // "com.github.jnr:jffi:1.2.23" => added (duplicated) by the Gradle plugin as "runtime".
+        final Element dependency3 = (Element) dependenciesEach.item(3);
+        assertSingleTextContentByTagName("com.github.jnr", dependency3, "groupId");
+        assertSingleTextContentByTagName("jffi", dependency3, "artifactId");
+        assertSingleTextContentByTagName("1.2.23", dependency3, "version");
+        assertNoElement(dependency3, "classifier");
+        assertSingleTextContentByTagName("runtime", dependency3, "scope");
+
+        // "com.github.jnr:jffi:1.2.23:native" => added (duplicated) by the Gradle plugin as "runtime".
+        final Element dependency4 = (Element) dependenciesEach.item(4);
+        assertSingleTextContentByTagName("com.github.jnr", dependency4, "groupId");
+        assertSingleTextContentByTagName("jffi", dependency4, "artifactId");
+        assertSingleTextContentByTagName("1.2.23", dependency4, "version");
+        assertSingleTextContentByTagName("native", dependency4, "classifier");
+        assertSingleTextContentByTagName("runtime", dependency4, "scope");
+
+        // "org.apache.commons:commons-lang3:3.9" => added by the Gradle plugin as "runtime".
+        final Element dependency5 = (Element) dependenciesEach.item(5);
+        assertSingleTextContentByTagName("org.apache.commons", dependency5, "groupId");
+        assertSingleTextContentByTagName("commons-lang3", dependency5, "artifactId");
+        assertSingleTextContentByTagName("3.9", dependency5, "version");
+        assertSingleTextContentByTagName("runtime", dependency5, "scope");
     }
 
     private static void assertPom3(final Path pomPath) throws IOException {
@@ -557,5 +616,20 @@ class TestEmbulkPluginsPlugin {
     private static void assertSingleTextContentByTagName(final String expected, final Element element, final String name) {
         final Element childElement = getSingleElementByTagName(element, name);
         assertEquals(expected, childElement.getTextContent());
+    }
+
+    private static void assertNoElement(final Element element, final String name) {
+        final NodeList childNodeList = element.getChildNodes();
+        final ArrayList<Element> matchedElements = new ArrayList<>();
+        for (int i = 0; i < childNodeList.getLength(); ++i) {
+            final Node foundNode = childNodeList.item(i);
+            if (foundNode instanceof Element) {
+                final Element foundElement = (Element) foundNode;
+                if (foundElement.getTagName().equals(name)) {
+                    matchedElements.add(foundElement);
+                }
+            }
+        }
+        assertEquals(0, matchedElements.size());
     }
 }

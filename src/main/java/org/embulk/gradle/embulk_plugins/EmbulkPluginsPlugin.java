@@ -23,12 +23,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.DependencyArtifact;
+import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
@@ -162,6 +165,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         final Logger logger = project.getLogger();
 
         alternativeRuntimeConfiguration.withDependencies(resolvedDependencies -> {
+            logger.info("{}", resolvedDependencies.getClass());
             final Map<String, ResolvedDependency> allResolvedDependencies = new HashMap<>();
             final Set<ResolvedDependency> firstLevelResolvedDependencies =
                     runtimeConfiguration.getResolvedConfiguration().getFirstLevelModuleDependencies();
@@ -175,6 +179,10 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
                 final HashSet<String> types = new HashSet<>();
                 final HashSet<ProjectComponentIdentifier> projects = new HashSet<>();
+                boolean hasNonStandardModuleArtifact = false;
+                final HashSet<ResolvedArtifact> revisitedModuleArtifacts = new HashSet<>();
+                logger.info("Dependency: {}", resolvedDependency);
+
                 for (final ResolvedArtifact resolvedModuleArtifact : resolvedModuleArtifacts) {
                     final ComponentIdentifier componentIdentifier = resolvedModuleArtifact.getId().getComponentIdentifier();
                     if (componentIdentifier instanceof ProjectComponentIdentifier) {
@@ -183,7 +191,18 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                         projects.add((ProjectComponentIdentifier) componentIdentifier);
                     } else if (componentIdentifier instanceof ModuleComponentIdentifier) {
                         // Other Java library: such as `compile "com.google.guava:guava:20.0"`
+                        logger.info("    Resolved Module Artifact: {}", resolvedModuleArtifact);
                         types.add("module");
+                        revisitedModuleArtifacts.add(resolvedModuleArtifact);
+                        if (!Objects.equals(resolvedDependency.getModuleName(), resolvedModuleArtifact.getName())
+                                || !Objects.equals(resolvedDependency.getModuleName(), resolvedModuleArtifact.getModuleVersion().getId().getName())
+                                || !Objects.equals(resolvedDependency.getModuleGroup(), resolvedModuleArtifact.getModuleVersion().getId().getGroup())
+                                || !Objects.equals(resolvedDependency.getModuleVersion(), resolvedModuleArtifact.getModuleVersion().getId().getVersion())
+                                || (resolvedModuleArtifact.getClassifier() != null && !resolvedModuleArtifact.getClassifier().isEmpty())) {
+                            hasNonStandardModuleArtifact = true;
+                            logger.info("        {}", resolvedModuleArtifact.getModuleVersion());
+                            logger.info("        {} : {}", resolvedDependency.getModuleName(), resolvedModuleArtifact.getName());
+                        }
                     } else if (componentIdentifier instanceof LibraryBinaryIdentifier) {
                         // Native library (?): not very sure
                         logger.warn("Library module artifact type: \"" + resolvedModuleArtifact.toString() + "\"");
@@ -221,7 +240,34 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                     notation.put("group", resolvedDependency.getModuleGroup());
                     notation.put("name", resolvedDependency.getModuleName());
                     notation.put("version", resolvedDependency.getModuleVersion());
-                    resolvedDependencies.add(project.getDependencies().create(notation));
+
+                    final ExternalModuleDependency moduleDependency;
+                    try {
+                        moduleDependency = (ExternalModuleDependency) project.getDependencies().create(notation);
+                    } catch (final ClassCastException ex) {
+                        throw new GradleException("Expected ExternalModuleDependency, but not.", ex);
+                    }
+
+                    if (hasNonStandardModuleArtifact) {
+                        // Once a ModuleDependency has an additional artifact by ModuleDependency#artifact(...),
+                        // the ModuleDependency's default artifact is overridden. Then, in that case, all artifacts
+                        // need to be added explicitly, including the default.
+                        for (final ResolvedArtifact resolvedModuleArtifact : revisitedModuleArtifacts) {
+                            // https://discuss.gradle.org/t/how-can-i-specify-a-dependency-classifier-dynamically/5943
+                            moduleDependency.artifact(dependencyArtifact -> {
+                                dependencyArtifact.setName(resolvedDependency.getModuleName());
+                                dependencyArtifact.setClassifier(resolvedModuleArtifact.getClassifier());
+                                dependencyArtifact.setType(DependencyArtifact.DEFAULT_TYPE);  // "jar"
+                                dependencyArtifact.setExtension(DependencyArtifact.DEFAULT_TYPE);  // "jar"
+                            });
+                        }
+                        for (final DependencyArtifact dependencyArtifact : moduleDependency.getArtifacts()) {
+                            logger.info("    Dependency Module Artifact: {}:{}",
+                                        dependencyArtifact.getName(),
+                                        dependencyArtifact.getClassifier());
+                        }
+                    }
+                    resolvedDependencies.add(moduleDependency);
                 }
             }
         });

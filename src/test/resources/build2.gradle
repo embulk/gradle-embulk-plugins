@@ -30,6 +30,8 @@ dependencies {
     compile("org.apache.bval:bval-jsr303:0.5") {
         exclude group: "org.apache.commons", module: "commons-lang3"
     }
+    compile "com.github.jnr:jffi:1.2.23"
+    compile "com.github.jnr:jffi:1.2.23:native"
 }
 
 embulkPlugin {
