@@ -161,22 +161,22 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             final Configuration alternativeRuntimeConfiguration) {
         final Logger logger = project.getLogger();
 
-        alternativeRuntimeConfiguration.withDependencies(dependencies -> {
-            final Map<String, ResolvedDependency> allDependencies = new HashMap<>();
-            final Set<ResolvedDependency> firstLevelDependencies =
+        alternativeRuntimeConfiguration.withDependencies(resolvedDependencies -> {
+            final Map<String, ResolvedDependency> allResolvedDependencies = new HashMap<>();
+            final Set<ResolvedDependency> firstLevelResolvedDependencies =
                     runtimeConfiguration.getResolvedConfiguration().getFirstLevelModuleDependencies();
-            for (final ResolvedDependency dependency : firstLevelDependencies) {
-                recurseAllDependencies(dependency, allDependencies, project);
+            for (final ResolvedDependency dependency : firstLevelResolvedDependencies) {
+                recurseAllResolvedDependencies(dependency, allResolvedDependencies, project);
             }
 
-            for (final ResolvedDependency dependency : allDependencies.values()) {
-                final String dependencyConfiguration = dependency.getConfiguration();
-                final Set<ResolvedArtifact> moduleArtifacts = dependency.getModuleArtifacts();
+            for (final ResolvedDependency resolvedDependency : allResolvedDependencies.values()) {
+                final String dependencyConfiguration = resolvedDependency.getConfiguration();
+                final Set<ResolvedArtifact> resolvedModuleArtifacts = resolvedDependency.getModuleArtifacts();
 
                 final HashSet<String> types = new HashSet<>();
                 final HashSet<ProjectComponentIdentifier> projects = new HashSet<>();
-                for (final ResolvedArtifact moduleArtifact : moduleArtifacts) {
-                    final ComponentIdentifier componentIdentifier = moduleArtifact.getId().getComponentIdentifier();
+                for (final ResolvedArtifact resolvedModuleArtifact : resolvedModuleArtifacts) {
+                    final ComponentIdentifier componentIdentifier = resolvedModuleArtifact.getId().getComponentIdentifier();
                     if (componentIdentifier instanceof ProjectComponentIdentifier) {
                         // Project: such as `compile project(":subproject")`
                         types.add("project");
@@ -186,22 +186,22 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                         types.add("module");
                     } else if (componentIdentifier instanceof LibraryBinaryIdentifier) {
                         // Native library (?): not very sure
-                        logger.warn("Library module artifact type: \"" + moduleArtifact.toString() + "\"");
+                        logger.warn("Library module artifact type: \"" + resolvedModuleArtifact.toString() + "\"");
                         types.add("library");
                     } else {
-                        logger.warn("Unknown module artifact type: \"" + moduleArtifact.toString() + "\"");
+                        logger.warn("Unknown module artifact type: \"" + resolvedModuleArtifact.toString() + "\"");
                         types.add("other");
                     }
                 }
                 if (types.size() > 1) {
                     throw new GradleException(
                             "Multiple types (" + types.stream().collect(Collectors.joining(", ")) + ") of module artifacts"
-                            + " are found in dependency: " + dependency.toString());
+                            + " are found in dependency: " + resolvedDependency.toString());
                 }
 
                 if (types.contains("project")) {
                     if (projects.size() > 1) {
-                        throw new GradleException("Multiple projects are found in dependency: " + dependency.toString());
+                        throw new GradleException("Multiple projects are found in dependency: " + resolvedDependency.toString());
                     }
                     if (projects.isEmpty()) {
                         throw new IllegalStateException(
@@ -215,13 +215,13 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                     if (dependencyConfiguration != null && !dependencyConfiguration.isEmpty()) {
                         notation.put("configuration", dependencyConfiguration);
                     }
-                    dependencies.add(project.getDependencies().create(project.getDependencies().project(notation)));
+                    resolvedDependencies.add(project.getDependencies().create(project.getDependencies().project(notation)));
                 } else if (types.contains("module")) {
                     final HashMap<String, String> notation = new HashMap<>();
-                    notation.put("group", dependency.getModuleGroup());
-                    notation.put("name", dependency.getModuleName());
-                    notation.put("version", dependency.getModuleVersion());
-                    dependencies.add(project.getDependencies().create(notation));
+                    notation.put("group", resolvedDependency.getModuleGroup());
+                    notation.put("name", resolvedDependency.getModuleName());
+                    notation.put("version", resolvedDependency.getModuleVersion());
+                    resolvedDependencies.add(project.getDependencies().create(notation));
                 }
             }
         });
@@ -284,9 +284,9 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         final Configuration compileOnlyConfiguration = project.getConfigurations().getByName("compileOnly");
 
         final Map<String, ResolvedDependency> compileOnlyDependencies =
-                collectAllDependencies(compileOnlyConfiguration, project);
+                collectAllResolvedDependencies(compileOnlyConfiguration, project);
         final Map<String, ResolvedDependency> alternativeRuntimeDependencies =
-                collectAllDependencies(alternativeRuntimeConfiguration, project);
+                collectAllResolvedDependencies(alternativeRuntimeConfiguration, project);
 
         final Set<String> intersects = new HashSet<>();
         intersects.addAll(alternativeRuntimeDependencies.keySet());
@@ -391,38 +391,38 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         }
     }
 
-    private static Map<String, ResolvedDependency> collectAllDependencies(
+    private static Map<String, ResolvedDependency> collectAllResolvedDependencies(
             final Configuration configuration, final Project project) {
-        final HashMap<String, ResolvedDependency> allDependencies = new HashMap<>();
+        final HashMap<String, ResolvedDependency> allResolvedDependencies = new HashMap<>();
 
         final Set<ResolvedDependency> firstLevel = configuration.getResolvedConfiguration().getFirstLevelModuleDependencies();
         for (final ResolvedDependency dependency : firstLevel) {
-            recurseAllDependencies(dependency, allDependencies, project);
+            recurseAllResolvedDependencies(dependency, allResolvedDependencies, project);
         }
 
-        return Collections.unmodifiableMap(allDependencies);
+        return Collections.unmodifiableMap(allResolvedDependencies);
     }
 
     /**
      * Traverses the dependency tree recursively to list all the dependencies.
      */
-    private static void recurseAllDependencies(
+    private static void recurseAllResolvedDependencies(
             final ResolvedDependency dependency,
-            final Map<String, ResolvedDependency> allDependencies,
+            final Map<String, ResolvedDependency> allResolvedDependencies,
             final Project project) {
         final String key = dependency.getModuleGroup() + ":" + dependency.getModuleName();
-        if (allDependencies.containsKey(key)) {
-            final ResolvedDependency found = allDependencies.get(key);
+        if (allResolvedDependencies.containsKey(key)) {
+            final ResolvedDependency found = allResolvedDependencies.get(key);
             if (!found.equals(dependency)) {
                 project.getLogger().warn(String.format(
                         "ResolvedDependency conflicts: \"%s\" : \"%s\"", found.toString(), dependency.toString()));
             }
             return;
         }
-        allDependencies.put(key, dependency);
+        allResolvedDependencies.put(key, dependency);
         if (dependency.getChildren().size() > 0) {
             for (final ResolvedDependency child : dependency.getChildren()) {
-                recurseAllDependencies(child, allDependencies, project);
+                recurseAllResolvedDependencies(child, allResolvedDependencies, project);
             }
         }
     }
