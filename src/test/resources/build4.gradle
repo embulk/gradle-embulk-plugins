@@ -24,6 +24,8 @@ tasks.withType(JavaCompile) {
 dependencies {
     compileOnly "org.embulk:embulk-core:0.9.17"
     compile "javax.json:javax.json-api:1.1.4"
+    compile "com.github.jnr:jffi:1.2.23"
+    compile "com.github.jnr:jffi:1.2.23:native"
 }
 
 embulkPlugin {
