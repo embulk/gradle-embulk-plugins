@@ -1,8 +1,11 @@
-name: Build and test
-on: [ pull_request ]
+name: Check
+on: [ pull_request, push ]
 jobs:
-  build:
+  check:
     runs-on: ${{ matrix.os }}
+    # push: always run.
+    # pull_request: run only when the PR is submitted from a forked repository, not within this repository.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     strategy:
       fail-fast: false
       matrix:
@@ -11,12 +14,13 @@ jobs:
         - macOS-latest
         - windows-latest
     steps:
-    - uses: actions/checkout@v1
-    - name: Set up JDK 1.8
-      uses: actions/setup-java@v1
+    - uses: actions/checkout@v2
+    - name: Set up OpenJDK 8
+      uses: actions/setup-java@v2
       with:
-        java-version: 1.8
-    - name: Build and test
+        java-version: 8
+        distribution: "temurin"
+    - name: Check
       run: ./gradlew --stacktrace check
     - uses: actions/upload-artifact@v1
       if: always()
