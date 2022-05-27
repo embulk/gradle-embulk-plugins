@@ -45,6 +45,7 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.ListProperty;
+import org.gradle.api.publish.tasks.GenerateModuleMetadata;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.Jar;
 
@@ -92,6 +93,12 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         final EmbulkPluginExtension extension = project.getExtensions().getByType(EmbulkPluginExtension.class);
 
         extension.checkValidity();
+
+        if (!extension.getGeneratesModuleMetadata().getOrElse(false)) {
+            project.getTasks().withType(GenerateModuleMetadata.class, configureAction -> {
+                configureAction.setEnabled(false);
+            });
+        }
 
         // TODO: Reconsider a possibility that it can be a detached configuration.
         // It must have been a non-detached configuration to be mapped into Maven scopes by Conf2ScopeMapping,

@@ -52,6 +52,8 @@ public class EmbulkPluginExtension {
         this.category = objectFactory.property(String.class);
         this.type = objectFactory.property(String.class);
         this.mainJar = objectFactory.property(String.class);
+        this.generatesModuleMetadata = objectFactory.property(Boolean.class);
+        this.generatesModuleMetadata.set(false);
         this.ignoreConflicts = castedListProperty(objectFactory);
     }
 
@@ -69,6 +71,10 @@ public class EmbulkPluginExtension {
 
     public Property<String> getMainJar() {
         return this.mainJar;
+    }
+
+    public Property<Boolean> getGeneratesModuleMetadata() {
+        return this.generatesModuleMetadata;
     }
 
     public ListProperty<Map<String, String>> getIgnoreConflicts() {
@@ -149,5 +155,6 @@ public class EmbulkPluginExtension {
     private final Property<String> category;
     private final Property<String> type;
     private final Property<String> mainJar;
+    private final Property<Boolean> generatesModuleMetadata;
     private final ListProperty<Map<String, String>> ignoreConflicts;
 }
