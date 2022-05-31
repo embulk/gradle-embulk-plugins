@@ -29,10 +29,14 @@ import java.util.stream.Collectors;
 import org.gradle.api.GradleException;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
+import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.DependencyArtifact;
+import org.gradle.api.artifacts.DependencySet;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.ResolvedArtifact;
+import org.gradle.api.artifacts.ResolvedConfiguration;
 import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.artifacts.component.LibraryBinaryIdentifier;
@@ -48,6 +52,7 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.publish.tasks.GenerateModuleMetadata;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.bundling.Jar;
+import org.gradle.api.tasks.compile.JavaCompile;
 
 /**
  * A plugin for building Embulk plugins.
@@ -57,6 +62,115 @@ import org.gradle.api.tasks.bundling.Jar;
  * @see <a href="https://github.com/gradle/gradle/blob/v5.5.1/subprojects/plugin-development/src/main/java/org/gradle/plugin/devel/plugins/JavaGradlePluginPlugin.java">JavaGradlePluginPlugin</a>
  */
 public class EmbulkPluginsPlugin implements Plugin<Project> {
+    /**
+     * https://docs.gradle.org/current/userguide/declaring_dependencies.html
+     *
+     * https://docs.gradle.org/current/userguide/java_plugin.html
+     *
+     * https://docs.gradle.org/current/userguide/java_library_plugin.html
+     *
+     * https://github.com/xvik/gradle-pom-plugin
+     * https://github.com/handmadecode/quill
+     * https://github.com/freefair/gradle-plugins
+     */
+    @Override
+    public void apply(final Project project) {
+        // The "java" plugin is required to be applied so that the "runtime" configuration will be available.
+        project.getPluginManager().apply(JavaPlugin.class);
+
+        final Configuration compileConfiguration = project.getConfigurations().getByName("compile");
+        final Configuration runtimeConfiguration = project.getConfigurations().getByName("runtime");
+        final Configuration runtimeElementsConfiguration = project.getConfigurations().getByName("runtimeElements");
+        final Configuration runtimeClasspathConfiguration = project.getConfigurations().getByName("runtimeClasspath");
+
+        project.afterEvaluate(projectAfterEvaluate -> {
+            final Configuration detachedConfiguration = project.getConfigurations().detachedConfiguration().extendsFrom(runtimeClasspathConfiguration);
+            detachedConfiguration.setCanBeConsumed(true);
+            detachedConfiguration.setCanBeResolved(true);
+            detachedConfiguration.setTransitive(true);
+            /*
+                final JavaCompile compileJava2Task = project.getTasks().create("compileJava2", JavaCompile.class);
+                compileJava2Task.setClasspath(detachedConfiguration);
+            */
+
+            System.out.println("@@@@");
+            final DependencySet set1 = runtimeElementsConfiguration.getDependencies();
+            for (final Dependency dep : set1) {
+                System.out.println(dep);
+            }
+            System.out.println("@@@@");
+            final DependencySet set2 = runtimeElementsConfiguration.getAllDependencies();
+            for (final Dependency dep : set2) {
+                System.out.println(dep);
+            }
+            System.out.println("@@@@");
+            final DependencySet set3 = detachedConfiguration.getDependencies();
+            for (final Dependency dep : set3) {
+                System.out.println(dep);
+            }
+            System.out.println("@@@@");
+            final DependencySet set4 = detachedConfiguration.getAllDependencies();
+            for (final Dependency dep : set4) {
+                System.out.println(dep);
+            }
+            runtimeClasspathConfiguration.resolve();
+            detachedConfiguration.resolve();
+            System.out.println("@@@@");
+            final DependencySet set5 = runtimeClasspathConfiguration.getDependencies();
+            for (final Dependency dep : set5) {
+                System.out.println(dep);
+            }
+            System.out.println("@@@@");
+            final DependencySet set6 = runtimeClasspathConfiguration.getAllDependencies();
+            for (final Dependency dep : set6) {
+                System.out.println(dep);
+            }
+            System.out.println("@@@@");
+            final ResolvedConfiguration r = detachedConfiguration.getResolvedConfiguration();
+            for (final ResolvedArtifact a : r.getResolvedArtifacts()) {
+                System.out.println(a);
+            }
+            System.out.println("@@@@");
+
+            /*
+            System.out.println(runtimeConfiguration.getState().toString());
+            System.out.println(runtimeElementsConfiguration.getState().toString());
+            System.out.println(runtimeClasspathConfiguration.getState().toString());
+            System.out.println(detachedConfiguration.getState().toString());
+            detachedConfiguration.resolve();
+            System.out.println(runtimeConfiguration.getState().toString());
+            System.out.println(runtimeElementsConfiguration.getState().toString());
+            System.out.println(runtimeClasspathConfiguration.getState().toString());
+            System.out.println(detachedConfiguration.getState().toString());
+            */
+            /*
+            runtimeConfiguration.resolve();
+            detachedConfiguration.resolve();
+            System.out.println(detachedConfiguration.getState().toString());
+            System.out.println(runtimeElementsConfiguration.getState().toString());
+            */
+
+            /*
+            System.out.println("{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{");
+            final Set<ResolvedDependency> firstLevelResolvedDependencies =
+                detachedConfiguration.getResolvedConfiguration().getFirstLevelModuleDependencies();
+            System.out.println("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[" + firstLevelResolvedDependencies.size());
+            for (final ResolvedDependency dep : firstLevelResolvedDependencies) {
+                System.out.println(dep.toString());
+            }
+
+            System.out.println("{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{");
+            final Set<ResolvedDependency> firstLevelResolvedDependencies2 =
+                runtimeConfiguration.getResolvedConfiguration().getFirstLevelModuleDependencies();
+            System.out.println("[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[" + firstLevelResolvedDependencies2.size());
+            for (final ResolvedDependency dep : firstLevelResolvedDependencies2) {
+                System.out.println(dep.toString());
+            }
+            */
+        });
+    }
+
+    /*
     @Override
     public void apply(final Project project) {
         // The "java" plugin is required to be applied so that the "runtime" configuration will be available.
@@ -73,6 +187,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             initializeAfterEvaluate(projectAfterEvaluate, runtimeConfiguration);
         });
     }
+    */
 
     /**
      * Creates an extension of "embulkPlugin { ... }".
@@ -80,6 +195,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
      * <p>This method does not return the instance of {@code EmbulkPluginExtension} created because
      * it does not contain meaningful information before evaluate.
      */
+    /*
     private static void createExtension(final Project project) {
         project.getExtensions().create(
                 "embulkPlugin",
@@ -124,10 +240,12 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
         // Configuration#getResolvedConfiguration here so that the dependency lock state is checked.
         alternativeRuntimeConfiguration.getResolvedConfiguration();
     }
+    */
 
     /**
      * Configures the basics of the alternative (flattened) runtime configuration.
      */
+    /*
     private static void configureAlternativeRuntimeBasics(
             final Configuration alternativeRuntimeConfiguration,
             final ObjectFactory objectFactory) {
@@ -161,10 +279,12 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             attributes.attribute(Usage.USAGE_ATTRIBUTE, objectFactory.named(Usage.class, Usage.JAVA_RUNTIME));
         });
     }
+    */
 
     /**
      * Configures the alternative (flattened) runtime configuration with flattened dependencies.
      */
+    /*
     private static void configureAlternativeRuntimeDependencies(
             final Project project,
             final Configuration runtimeConfiguration,
@@ -279,6 +399,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             }
         });
     }
+    */
 
     /**
      * Configures "components.java" (SoftwareComponent used for "from components.java" in MavenPublication)
@@ -293,6 +414,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
      * https://github.com/gradle/gradle/blob/v6.1.1/subprojects/maven/src/main/java/org/gradle/api/publish/maven/internal/publication/DefaultMavenPublication.java#L274-L286
      * https://github.com/gradle/gradle/blob/v6.1.1/subprojects/maven/src/main/java/org/gradle/api/publish/maven/internal/publication/DefaultMavenPublication.java#L392-L412
      */
+    /*
     private static void configureComponentsJava(
             final Project project,
             final Configuration alternativeRuntimeConfiguration) {
@@ -305,10 +427,12 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             throw new GradleException("Failed to configure components.java because it is not AdhocComponentWithVariants.");
         }
     }
+    */
 
     /**
      * Configures the standard {@code "jar"} task with required MANIFEST.
      */
+    /*
     private static void configureJarTask(final Project project, final EmbulkPluginExtension extension) {
         final String mainJarTaskName;
         if (extension.getMainJar().isPresent()) {
@@ -455,10 +579,12 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
         return Collections.unmodifiableMap(allResolvedDependencies);
     }
+    */
 
     /**
      * Traverses the dependency tree recursively to list all the dependencies.
      */
+    /*
     private static void recurseAllResolvedDependencies(
             final ResolvedDependency dependency,
             final Map<String, ResolvedDependency> allResolvedDependencies,
@@ -481,4 +607,5 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
     }
 
     static final String DEFAULT_JRUBY = "org.jruby:jruby-complete:9.2.7.0";
+    */
 }

@@ -21,14 +21,17 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
@@ -65,13 +68,20 @@ import org.xml.sax.SAXException;
  */
 class TestEmbulkPluginsPlugin {
     @Test
-    @DisabledOnOs(OS.WINDOWS)
+    public void test0(@TempDir Path tempDir) throws IOException {
+        final Path projectDir = prepareProjectDir(tempDir, "test0");
+        runGradle(projectDir, "compileJava");
+        // assertTrue(Files.exists(projectDir.resolve("build/libs/test0-0.2.5.jar")));
+    }
+
+    /*
+    @Test
     public void testPublish(@TempDir Path tempDir) throws IOException {
         final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test1"));
         Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build.gradle"),
                    projectDir.resolve("build.gradle"));
 
-        this.build(projectDir, "jar");
+        runGradle(projectDir, "jar");
         assertTrue(Files.exists(projectDir.resolve("build/libs/embulk-input-test1-0.2.5.jar")));
 
         this.build(projectDir, "publishEmbulkPluginMavenPublicationToMavenRepository");
@@ -83,7 +93,61 @@ class TestEmbulkPluginsPlugin {
         assertTrue(Files.exists(pomPath));
         assertPom(pomPath);
     }
+        */
 
+    private static Path prepareProjectDir(final Path tempDir, final String testProjectName) {
+        final String resourceName = testProjectName + System.getProperty("file.separator") + "build.gradle";
+        final Path resourceDir;
+        try {
+            final URL resourceUrl = TestEmbulkPluginsPlugin.class.getClassLoader().getResource(resourceName);
+            if (resourceUrl == null) {
+                throw new FileNotFoundException(resourceName + " is not found.");
+            }
+            resourceDir = Paths.get(resourceUrl.toURI()).getParent();
+        } catch (final Exception ex) {
+            fail("Failed to find a test resource.", ex);
+            throw new RuntimeException(ex);  // Never reaches.
+        }
+
+        final Path projectDir;
+        try {
+            projectDir = Files.createDirectory(tempDir.resolve(testProjectName));
+        } catch (final Exception ex) {
+            fail("Failed to create a test directory.", ex);
+            throw new RuntimeException(ex);  // Never reaches.
+        }
+
+        try {
+            copyFilesRecursively(resourceDir, projectDir);
+        } catch (final Exception ex) {
+            fail("Failed to copy test files.", ex);
+            throw new RuntimeException(ex);  // Never reaches.
+        }
+
+        return projectDir;
+    }
+
+    private static void copyFilesRecursively(final Path source, final Path destination) throws IOException {
+        Files.walkFileTree(source, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
+                final Path target = destination.resolve(source.relativize(dir));
+                Files.createDirectories(target);
+                System.out.println(target.toString() + System.getProperty("file.separator"));
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
+                final Path target = destination.resolve(source.relativize(file));
+                Files.copy(file, target);
+                System.out.println(target);
+                return FileVisitResult.CONTINUE;
+            }
+        });
+    }
+
+    /*
     @Test
     @DisabledOnOs(OS.WINDOWS)
     public void testEmbulkPluginRuntimeConfiguration(@TempDir Path tempDir) throws IOException {
@@ -267,8 +331,9 @@ class TestEmbulkPluginsPlugin {
         assertTrue(Files.exists(projectDir.resolve("embulk-input-subprojects_subplugin/build/gemContents/classpath/sublib-0.6.14.jar")));
         assertPomSubprojectsSubplugin(subPomPath);
     }
+    */
 
-    private static BuildResult build(final Path projectDir, final String... args) {
+    private static BuildResult runGradle(final Path projectDir, final String... args) {
         final ArrayList<String> argsList = new ArrayList<>();
         argsList.addAll(Arrays.asList(args));
         argsList.add("--stacktrace");
@@ -281,6 +346,7 @@ class TestEmbulkPluginsPlugin {
         return result;
     }
 
+    /*
     private static void assertManifest(final Path jarPath) throws IOException {
         final JarURLConnection connection = openJarUrlConnection(jarPath);
         final Manifest manifest = connection.getManifest();
@@ -568,6 +634,7 @@ class TestEmbulkPluginsPlugin {
             });
         }
     }
+    */
 
     private static GradleRunner newGradleRunner(final Path projectDir, final List<String> args) {
         return GradleRunner.create()
@@ -577,6 +644,7 @@ class TestEmbulkPluginsPlugin {
                 .withPluginClasspath();
     }
 
+    /*
     private static JarURLConnection openJarUrlConnection(final Path jarPath) throws IOException {
         final URL jarUrl = new URL("jar:" + jarPath.toUri().toURL().toString() + "!/");
         return (JarURLConnection) jarUrl.openConnection();
@@ -632,4 +700,5 @@ class TestEmbulkPluginsPlugin {
         }
         assertEquals(0, matchedElements.size());
     }
+    */
 }
