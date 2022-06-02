@@ -3,8 +3,15 @@ plugins {
     id "maven"
     id "java-gradle-plugin"
     id "checkstyle"
-    id "com.gradle.plugin-publish" version "0.11.0"
+    id "com.gradle.plugin-publish" version "0.20.0"
 }
+
+repositories {
+    mavenCentral()
+}
+
+sourceCompatibility = "1.8"
+targetCompatibility = "1.8"
 
 // This Gradle plugin is published under the group "gradle.plugin.org.embulk".
 // We have an option to avoid the "gradle.plugin" prefix, but we don't do it as it bothers the Gradle team.
@@ -13,13 +20,6 @@ plugins {
 group = "org.embulk"
 version = "0.4.4-SNAPSHOT"
 description = "A Gradle plugin to build and publish Embulk plugins"
-
-repositories {
-    mavenCentral()
-}
-
-sourceCompatibility = "1.8"
-targetCompatibility = "1.8"
 
 tasks.withType(JavaCompile) {
     options.encoding = "UTF-8"
@@ -30,30 +30,12 @@ dependencies {
     implementation gradleApi()
 
     testImplementation gradleTestKit()
-    testImplementation "org.junit.jupiter:junit-jupiter-api:5.6.2"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.6.2"
-}
-
-test {
-    useJUnitPlatform()
-    testLogging {
-        outputs.upToDateWhen { false }
-        showStandardStreams = true
-    }
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.8.2"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.8.2"
 }
 
 jar {
     from rootProject.file("LICENSE")
-}
-
-checkstyle {
-    toolVersion "8.23"
-    configFile = file("${projectDir}/config/checkstyle/checkstyle.xml")
-    configProperties = [
-        "checkstyle.config.path": file("${projectDir}/config/checkstyle")
-    ]
-    ignoreFailures = false
-    maxWarnings = 0
 }
 
 gradlePlugin {
@@ -71,4 +53,27 @@ pluginBundle {
     website = "http://www.embulk.org/"
     vcsUrl = "https://github.com/embulk/gradle-embulk-plugins"
     tags = ["embulk"]
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        outputs.upToDateWhen { false }
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showCauses = true
+        showExceptions = true
+        showStackTraces = true
+        showStandardStreams = true
+        events "passed", "skipped", "failed", "standardOut", "standardError"
+    }
+}
+
+checkstyle {
+    toolVersion "8.23"
+    configFile = file("${projectDir}/config/checkstyle/checkstyle.xml")
+    configProperties = [
+        "checkstyle.config.path": file("${projectDir}/config/checkstyle")
+    ]
+    ignoreFailures = false
+    maxWarnings = 0
 }
