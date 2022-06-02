@@ -1,6 +1,3 @@
-# Embulk Plugins Gradle Plugin
+# Changelog
 
-## 0.1.0 - 2017-09-20
-### Added
-- Gradle tasks `embulkPluginJar` and `uploadEmbulkPluginJar`.
-- Gradle task classes `EmbulkPluginJar` and `MavenUploadEmbulkPluginJar` that are base of the tasks above respectively.
+Look at its Git annotated tags, or its [GitHub Releases](https://github.com/embulk/gradle-embulk-plugins/releases).
