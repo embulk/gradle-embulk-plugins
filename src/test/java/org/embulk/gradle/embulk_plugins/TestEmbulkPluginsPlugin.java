@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.JarURLConnection;
@@ -29,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
@@ -67,14 +69,12 @@ class TestEmbulkPluginsPlugin {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     public void testPublish(@TempDir Path tempDir) throws IOException {
-        final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test1"));
-        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build.gradle"),
-                   projectDir.resolve("build.gradle"));
+        final Path projectDir = prepareProjectDir(tempDir, "testPublish");
 
-        this.build(projectDir, "jar");
+        runGradle(projectDir, "jar");
         assertTrue(Files.exists(projectDir.resolve("build/libs/embulk-input-test1-0.2.5.jar")));
 
-        this.build(projectDir, "publishEmbulkPluginMavenPublicationToMavenRepository");
+        runGradle(projectDir, "publishEmbulkPluginMavenPublicationToMavenRepository");
         final Path versionDir = projectDir.resolve("build/mavenPublishLocal/org/embulk/input/test1/embulk-input-test1/0.2.5");
         final Path jarPath = versionDir.resolve("embulk-input-test1-0.2.5.jar");
         final Path pomPath = versionDir.resolve("embulk-input-test1-0.2.5.pom");
@@ -87,11 +87,9 @@ class TestEmbulkPluginsPlugin {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     public void testEmbulkPluginRuntimeConfiguration(@TempDir Path tempDir) throws IOException {
-        final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test2"));
-        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build2.gradle"),
-                   projectDir.resolve("build.gradle"));
+        final Path projectDir = prepareProjectDir(tempDir, "testEmbulkPluginRuntimeConfiguration");
 
-        this.build(projectDir, "dependencies", "--configuration", "embulkPluginRuntime", "--write-locks");
+        runGradle(projectDir, "dependencies", "--configuration", "embulkPluginRuntime", "--write-locks");
         final Path lockfilePath = projectDir.resolve("gradle/dependency-locks/embulkPluginRuntime.lockfile");
         assertTrue(Files.exists(lockfilePath));
         assertFileDoesNotContain(lockfilePath, "javax.inject:javax.inject");
@@ -107,14 +105,12 @@ class TestEmbulkPluginsPlugin {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     public void testVariableMainJar(@TempDir Path tempDir) throws IOException {
-        final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test3"));
-        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build3.gradle"),
-                   projectDir.resolve("build.gradle"));
+        final Path projectDir = prepareProjectDir(tempDir, "testVariableMainJar");
 
-        this.build(projectDir, "jar");
+        runGradle(projectDir, "jar");
         assertTrue(Files.exists(projectDir.resolve("build/libs/embulk-input-test3-0.2.8.jar")));
 
-        this.build(projectDir, "publishEmbulkPluginMavenPublicationToMavenRepository");
+        runGradle(projectDir, "publishEmbulkPluginMavenPublicationToMavenRepository");
         final Path versionDir = projectDir.resolve("build/mavenLocal3/org/embulk/input/test3/embulk-input-test3/0.2.8");
         final Path jarPath = versionDir.resolve("embulk-input-test3-0.2.8.jar");
         final Path pomPath = versionDir.resolve("embulk-input-test3-0.2.8.pom");
@@ -144,14 +140,9 @@ class TestEmbulkPluginsPlugin {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     public void testNoGenerateRubyCode(@TempDir Path tempDir) throws IOException {
-        final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test4"));
-        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build4.gradle"),
-                   projectDir.resolve("build.gradle"));
-        Files.createDirectories(projectDir.resolve("lib/embulk/input/"));
-        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("lib/embulk/input/test4.rb"),
-                   projectDir.resolve("lib/embulk/input/test4.rb"));
+        final Path projectDir = prepareProjectDir(tempDir, "testNoGenerateRubyCode");
 
-        this.build(projectDir, "gem");
+        runGradle(projectDir, "gem");
         assertTrue(Files.exists(projectDir.resolve("build/libs/embulk-input-test4-0.9.2.jar")));
         assertTrue(Files.exists(projectDir.resolve("build/gemContents/lib/embulk/input/test4.rb")));
 
@@ -181,11 +172,9 @@ class TestEmbulkPluginsPlugin {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     public void testRubyVersion(@TempDir Path tempDir) throws IOException {
-        final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-test5"));
-        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("build5.gradle"),
-                   projectDir.resolve("build.gradle"));
+        final Path projectDir = prepareProjectDir(tempDir, "testRubyVersion");
 
-        this.build(projectDir, "gem");
+        runGradle(projectDir, "gem");
         assertTrue(Files.exists(projectDir.resolve("build/libs/embulk-input-test5-0.1.41-SNAPSHOT.jar")));
         assertTrue(Files.exists(projectDir.resolve("build/gems/embulk-input-test5-0.1.41.snapshot-java.gem")));
     }
@@ -193,19 +182,10 @@ class TestEmbulkPluginsPlugin {
     @Test
     @DisabledOnOs(OS.WINDOWS)
     public void testSubprojects(@TempDir Path tempDir) throws IOException {
-        final Path projectDir = Files.createDirectory(tempDir.resolve("embulk-input-subprojects"));
-        final Path sublibDir = Files.createDirectory(projectDir.resolve("sublib"));
-        final Path subpluginDir = Files.createDirectory(projectDir.resolve("embulk-input-subprojects_subplugin"));
-        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("subprojects/build_root.gradle"),
-                   projectDir.resolve("build.gradle"));
-        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("subprojects/settings.gradle"),
-                   projectDir.resolve("settings.gradle"));
-        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("subprojects/build_sublib.gradle"),
-                   sublibDir.resolve("build.gradle"));
-        Files.copy(TestEmbulkPluginsPlugin.class.getClassLoader().getResourceAsStream("subprojects/build_subplugin.gradle"),
-                   subpluginDir.resolve("build.gradle"));
+        final Path projectDir = prepareProjectDir(tempDir, "testSubprojects");
+        final Path subpluginDir = projectDir.resolve("embulk-input-subprojects_subplugin");
 
-        this.build(projectDir, ":dependencies", "--configuration", "embulkPluginRuntime", "--write-locks");
+        runGradle(projectDir, ":dependencies", "--configuration", "embulkPluginRuntime", "--write-locks");
         final Path rootLockfilePath = projectDir.resolve("gradle/dependency-locks/embulkPluginRuntime.lockfile");
         for (final String line : Files.readAllLines(rootLockfilePath, StandardCharsets.UTF_8)) {
             System.out.println(line);
@@ -216,7 +196,7 @@ class TestEmbulkPluginsPlugin {
         assertFileDoesNotContain(rootLockfilePath, "org.embulk.input.test_subprojects:sublib:0.6.14");
         assertFileDoesNotContain(rootLockfilePath, "org.apache.commons:commons-math3:3.6.1");
 
-        this.build(projectDir, ":embulk-input-subprojects_subplugin:dependencies", "--configuration", "embulkPluginRuntime", "--write-locks");
+        runGradle(projectDir, ":embulk-input-subprojects_subplugin:dependencies", "--configuration", "embulkPluginRuntime", "--write-locks");
         final Path subpluginLockfilePath = subpluginDir.resolve("gradle/dependency-locks/embulkPluginRuntime.lockfile");
         for (final String line : Files.readAllLines(subpluginLockfilePath, StandardCharsets.UTF_8)) {
             System.out.println(line);
@@ -227,7 +207,7 @@ class TestEmbulkPluginsPlugin {
         assertFileDoesNotContain(subpluginLockfilePath, "org.embulk.input.test_subprojects:sublib:0.6.14");
         assertFileDoesNotContain(subpluginLockfilePath, "commons-io:commons-io:2.6");
 
-        this.build(projectDir, "publishEmbulkPluginMavenPublicationToMavenRepository", ":gem", ":embulk-input-subprojects_subplugin:gem");
+        runGradle(projectDir, "publishEmbulkPluginMavenPublicationToMavenRepository", ":gem", ":embulk-input-subprojects_subplugin:gem");
 
         final Path rootVersionDir = projectDir.resolve("build/mavenLocalSubprojects/org/embulk/input/test_subprojects/embulk-input-subprojects_root/0.6.14");
         final Path rootJarPath = rootVersionDir.resolve("embulk-input-subprojects_root-0.6.14.jar");
@@ -268,7 +248,59 @@ class TestEmbulkPluginsPlugin {
         assertPomSubprojectsSubplugin(subPomPath);
     }
 
-    private static BuildResult build(final Path projectDir, final String... args) {
+    private static Path prepareProjectDir(final Path tempDir, final String testProjectName) {
+        final String resourceName = testProjectName + System.getProperty("file.separator") + "build.gradle";
+        final Path resourceDir;
+        try {
+            final URL resourceUrl = TestEmbulkPluginsPlugin.class.getClassLoader().getResource(resourceName);
+            if (resourceUrl == null) {
+                throw new FileNotFoundException(resourceName + " is not found.");
+            }
+            resourceDir = Paths.get(resourceUrl.toURI()).getParent();
+        } catch (final Exception ex) {
+            fail("Failed to find a test resource.", ex);
+            throw new RuntimeException(ex);  // Never reaches.
+        }
+
+        final Path projectDir;
+        try {
+            projectDir = Files.createDirectory(tempDir.resolve(testProjectName));
+        } catch (final Exception ex) {
+            fail("Failed to create a test directory.", ex);
+            throw new RuntimeException(ex);  // Never reaches.
+        }
+
+        try {
+            copyFilesRecursively(resourceDir, projectDir);
+        } catch (final Exception ex) {
+            fail("Failed to copy test files.", ex);
+            throw new RuntimeException(ex);  // Never reaches.
+        }
+
+        return projectDir;
+    }
+
+    private static void copyFilesRecursively(final Path source, final Path destination) throws IOException {
+        Files.walkFileTree(source, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult preVisitDirectory(final Path dir, final BasicFileAttributes attrs) throws IOException {
+                final Path target = destination.resolve(source.relativize(dir));
+                Files.createDirectories(target);
+                System.out.println(target.toString() + System.getProperty("file.separator"));
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) throws IOException {
+                final Path target = destination.resolve(source.relativize(file));
+                Files.copy(file, target);
+                System.out.println(target);
+                return FileVisitResult.CONTINUE;
+            }
+        });
+    }
+
+    private static BuildResult runGradle(final Path projectDir, final String... args) {
         final ArrayList<String> argsList = new ArrayList<>();
         argsList.addAll(Arrays.asList(args));
         argsList.add("--stacktrace");
