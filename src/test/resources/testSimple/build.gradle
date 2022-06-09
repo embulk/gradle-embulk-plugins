@@ -1,0 +1,59 @@
+plugins {
+    id "java"
+    id "maven"
+    id "maven-publish"
+    id "org.embulk.embulk-plugins"
+}
+
+group = "org.embulk.input.simple"
+archivesBaseName = "${project.name}"
+version = "0.11.22"
+description = "Embulk simple input plugin"
+
+repositories {
+    mavenCentral()
+}
+
+sourceCompatibility = "1.8"
+targetCompatibility = "1.8"
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+}
+
+dependencies {
+    compileOnly "org.embulk:embulk-api:0.10.35"
+    compileOnly "org.embulk:embulk-spi:0.10.35"
+    implementation("org.apache.commons:commons-text:1.7") {
+        exclude group: "foo", module: "bar"
+        exclude group: "foo"
+        exclude module: "bar"
+    }
+    implementation("com.github.jnr:jffi:1.2.23") {
+        exclude group: "foo", module: "bar"
+        exclude group: "*", module: "*"
+    }
+    implementation "com.github.jnr:jffi:1.2.23:native"
+}
+
+embulkPlugin {
+    mainClass = "org.embulk.input.simple.SimpleInputPlugin"
+    category = "input"
+    type = "simple"
+    directPomManipulation = true
+}
+
+publishing {
+    publications {
+        embulkPluginMaven(MavenPublication) {
+            description = "simple and stupid"
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            url = "${project.buildDir}/mavenPublishLocal"
+        }
+    }
+}
