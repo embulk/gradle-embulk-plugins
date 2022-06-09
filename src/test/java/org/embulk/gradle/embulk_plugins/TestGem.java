@@ -33,15 +33,15 @@ import org.junit.jupiter.api.io.TempDir;
 class TestGem {
     @Test
     public void testPathsWithSlashes(@TempDir Path tempDir) throws IOException {
-        Files.copy(TestGem.class.getClassLoader().getResourceAsStream("build.gradle"),
+        Files.copy(TestGem.class.getClassLoader().getResourceAsStream("testGem.txt"),
                    tempDir.resolve("file0"));
         final Path dir1 = Files.createDirectory(tempDir.resolve("sub1"));
-        Files.copy(TestGem.class.getClassLoader().getResourceAsStream("build.gradle"),
+        Files.copy(TestGem.class.getClassLoader().getResourceAsStream("testGem.txt"),
                    dir1.resolve("file1"));
-        Files.copy(TestGem.class.getClassLoader().getResourceAsStream("build.gradle"),
+        Files.copy(TestGem.class.getClassLoader().getResourceAsStream("testGem.txt"),
                    dir1.resolve("file2"));
         final Path dir2 = Files.createDirectory(dir1.resolve("sub2"));
-        Files.copy(TestGem.class.getClassLoader().getResourceAsStream("build.gradle"),
+        Files.copy(TestGem.class.getClassLoader().getResourceAsStream("testGem.txt"),
                    dir2.resolve("file3"));
 
         final String[] foundPathsWithSlashes = listFiles(tempDir).stream()
