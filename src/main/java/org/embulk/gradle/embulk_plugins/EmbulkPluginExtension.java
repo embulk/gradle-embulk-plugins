@@ -54,6 +54,8 @@ public class EmbulkPluginExtension {
         this.mainJar = objectFactory.property(String.class);
         this.generatesModuleMetadata = objectFactory.property(Boolean.class);
         this.generatesModuleMetadata.set(false);
+        this.directPomManipulation = objectFactory.property(Boolean.class);
+        this.directPomManipulation.set(false);
         this.ignoreConflicts = castedListProperty(objectFactory);
     }
 
@@ -75,6 +77,10 @@ public class EmbulkPluginExtension {
 
     public Property<Boolean> getGeneratesModuleMetadata() {
         return this.generatesModuleMetadata;
+    }
+
+    public Property<Boolean> getDirectPomManipulation() {
+        return this.directPomManipulation;
     }
 
     public ListProperty<Map<String, String>> getIgnoreConflicts() {
@@ -156,5 +162,6 @@ public class EmbulkPluginExtension {
     private final Property<String> type;
     private final Property<String> mainJar;
     private final Property<Boolean> generatesModuleMetadata;
+    private final Property<Boolean> directPomManipulation;
     private final ListProperty<Map<String, String>> ignoreConflicts;
 }
