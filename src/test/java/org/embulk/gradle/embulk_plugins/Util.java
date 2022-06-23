@@ -195,4 +195,40 @@ class Util {
         }
         assertEquals(0, matchedElements.size());
     }
+
+    static void assertExcludeAll(final Element element) {
+        final NodeList childNodeList = element.getChildNodes();
+        final ArrayList<Element> matchedElements = new ArrayList<>();
+        for (int i = 0; i < childNodeList.getLength(); ++i) {
+            final Node foundNode = childNodeList.item(i);
+            if (foundNode instanceof Element) {
+                final Element foundElement = (Element) foundNode;
+                if (foundElement.getTagName().equals("exclusions")) {
+                    matchedElements.add(foundElement);
+                }
+            }
+        }
+        assertEquals(1, matchedElements.size());
+        final Element exclusionsElement = matchedElements.get(0);
+        assertExcludeAllGroups(exclusionsElement);
+    }
+
+    static void assertExcludeAllGroups(final Element element) {
+        final NodeList childNodeList = element.getChildNodes();
+        final ArrayList<Element> matchedElements = new ArrayList<>();
+        assertEquals(3, childNodeList.getLength());
+        for (int i = 0; i < childNodeList.getLength(); ++i) {
+            final Node foundNode = childNodeList.item(i);
+            if (foundNode instanceof Element) {
+                final Element foundElement = (Element) foundNode;
+                if (foundElement.getTagName().equals("exclusion")) {
+                    matchedElements.add(foundElement);
+                }
+            }
+        }
+        assertEquals(1, matchedElements.size());
+        final Element exclusionElement = matchedElements.get(0);
+        assertSingleTextContentByTagName("*", exclusionElement, "groupId");
+        assertNoElement(exclusionElement, "artifactId");
+    }
 }

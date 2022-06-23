@@ -31,7 +31,7 @@ import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Tests the "embulkPluginRuntime" configuration in the Embulk plugins Gradle plugin.
+ * Tests the "runtimeClasspath" configuration in the Embulk plugins Gradle plugin.
  *
  * <p>Ths test is tentatively disabled on Windows. {@code GradleRunner} may keep some related files open.
  * It prevents JUnit 5 from removing the temporary directory ({@code TempDir}).
@@ -44,8 +44,8 @@ class TestEmbulkPluginRuntimeConfiguration {
     public void test(@TempDir Path tempDir) throws IOException {
         final Path projectDir = prepareProjectDir(tempDir, "testEmbulkPluginRuntimeConfiguration");
 
-        runGradle(projectDir, "dependencies", "--configuration", "embulkPluginRuntime", "--write-locks");
-        final Path lockfilePath = projectDir.resolve("gradle/dependency-locks/embulkPluginRuntime.lockfile");
+        runGradle(projectDir, "dependencies", "--configuration", "runtimeClasspath", "--write-locks");
+        final Path lockfilePath = projectDir.resolve("gradle/dependency-locks/runtimeClasspath.lockfile");
         assertTrue(Files.exists(lockfilePath));
         assertFileDoesNotContain(lockfilePath, "javax.inject:javax.inject");
         assertFileDoesNotContain(lockfilePath, "org.apache.commons:commons-lang3");

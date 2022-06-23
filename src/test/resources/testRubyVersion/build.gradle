@@ -10,7 +10,7 @@ version = "0.1.41-SNAPSHOT"
 description = "Embulk input plugin for testing 5"
 
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
 sourceCompatibility = "1.8"
@@ -22,7 +22,7 @@ tasks.withType(JavaCompile) {
 }
 
 dependencies {
-    compileOnly "org.embulk:embulk-core:0.9.17"
+    compileOnly "org.embulk:embulk-core:0.10.35"
 }
 
 embulkPlugin {
