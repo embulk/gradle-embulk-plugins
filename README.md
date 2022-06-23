@@ -20,7 +20,6 @@ description = "An Embulk plugin to load example data."
 
 repositories {
     mavenCentral()
-    // jcenter() is no longer needed if depending only on 0.10.29+.
 }
 
 dependencies {
@@ -63,13 +62,10 @@ embulkPlugin {
 }
 
 // This Gradle plugin's POM dependency modification works for "maven-publish" tasks.
-//
-// Note that "uploadArchives" is no longer supported. It is deprecated in Gradle 6 to be removed in Gradle 7.
-// https://github.com/gradle/gradle/issues/3003#issuecomment-495025844
 publishing {
     publications {
         embulkPluginMaven(MavenPublication) {  // Publish it with "publishEmbulkPluginMavenPublicationToMavenRepository".
-            from components.java  // Must be "components.java". The dependency modification works only for it.
+            from components.java  // Must be "components.java".
         }
     }
     repositories {
@@ -105,13 +101,18 @@ publishing {
 
 ### Dependency locking
 
-The dependency configuration `embulkPluginRuntime`, which is added by this Gradle plugin for flattened dependencies, has [dependency locking](https://docs.gradle.org/current/userguide/dependency_locking.html) activated by default.
+The dependency configurations `compileClasspath` and `runtimeClasspath` have [dependency locking](https://docs.gradle.org/current/userguide/dependency_locking.html) activated by default.
 
-In the beginning of your Embulk plugin project, or after migrating your Embulk plugin project to use this Gradle plugin, it is recommended for you to run `./gradlew dependencies --write-locks`, and add generated `gradle/dependency-locks/embulkPluginRuntime.lockfile` in your version control system. Your Embulk plugin project will have more sensitive checks on its dependency libraries, then.
+In the beginning of your Embulk plugin project, or after migrating your Embulk plugin project to use this Gradle plugin, it is recommended for you to run `./gradlew dependencies --write-locks`, and to add generated `lockfile`(s) in your version control system.
+
+* Gradle 6: `/gradle/dependency-locks/compileClasspath.lockfile` and `/gradle/dependency-locks/runtimeClasspath.lockfile`
+* Gradle 7: `/gradle.lockfile`
+
+Embulk plugins are sensitive about dependency libraries. Your project will have better checks about dependencies by `lockfile`(s).
 
 ### How to migrate old-style `build.gradle` of your Embulk plugins
 
-1. Upgrade your Gradle wrapper to `6.0.1` or later.
+1. Upgrade your Gradle wrapper to `6.4.1` or later.
 2. Define `group`, `version`, and `description` in your Gradle project.
     * `group` should **NOT** be `"org.embulk"` unless your project is under: https://github.com/embulk. For example:
       ```
@@ -141,16 +142,6 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
       testCompile "org.embulk:embulk-core:0.10.29"
       testCompile "org.embulk:embulk-deps:0.10.29"
       ```
-    * Take care that **other dependencies do not have transitive dependencies to `embulk-core` and its dependencies**. You'll need to exclude it explicitly those transitive dependencies explicitly in that case. For example:
-      ```
-      compile("org.embulk.base.restclient:embulk-base-restclient:0.7.0") {
-          exclude group: "org.embulk", module: "embulk-core"
-      }
-      compile("org.glassfish.jersey.core:jersey-client:2.25.1") {
-          exclude group: "javax.inject", module: "javax.inject"  // embulk-core depends on javax.inject.
-      }
-      ```
-      * If a dependency needs to be duplicated intentionally, add `ignoreConflicts` in the `embulkPlugins` block. See below.
 4. Add required `testCompile` if depending on `embulk-core:0.9.22+`.
     * If tests depend on `embulk-core:0.9.22`:
       ```
@@ -289,18 +280,6 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
           type = "dummy"
       }
       ```
-    * If a dependency (or dependencies) needs to be duplicated intentionally, add `ignoreConflicts` here in the `embulkPlugin` task like below. It does not affect any deliverable although it shows to ignore the conflict(s) in the related warning message.
-      ```
-      embulkPlugin {
-          mainClass = "org.embulk.input.dummy.DummyInputPlugin"
-          category = "input"
-          type = "dummy"
-          ignoreConflicts = [
-              [ group: "javax.inject", module: "javax.inject" ],
-              ...
-          ]
-      }
-      ```
 11. Configure publishing the plugin JAR to the Maven repository where you want to upload.
     * The standard `jar` task is already reconfigured to generate a JAR ready as an Embulk plugin.
     * Note that `uploadArchives` with the `maven` plugin is no longer supported.
@@ -347,11 +326,12 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
 What this Gradle plugin does?
 ------------------------------
 
-This Gradle plugin does the following things for `jar` in addition to a normal Gradle build:
+This Gradle plugin has two main purposes to satisfy two requirements as an Embulk plugin.
 
-* Add some Embulk-specific attributes in generated JAR's manifest.
-* Bring its transitive dependencies up flattened to the first level as `runtime`.
-    * It is required in Embulk plugins because Embulk intentionally does not load transitive dependencies.
-* Check that dependencies of `compileOnly` are not included in `runtime`.
+One of the requirements is to get Embulk plugin's `pom.xml` to include all dependencies as the direct first-level dependencies without any transitive dependency. This is an important restriction to keep dependencies consistent between plugin development and Embulk's runtime. (Indeed, Embulk's `PluginClassLoader` is implemented for Maven-based plugins to load only the direct first-level dependencies without any transitive dependency.)
 
-And, it additionally provides some features for traditional `gem`-based Embulk plugins.
+The other requirement is to add some required attributes in `MANIFEST.MF`.
+
+In addition, this Gradle plugin provides some support for publishing RubyGems-based plugins.
+
+This Gradle plugin depends on Gradle's `java-plugin` and `maven-publish-plugin`.
