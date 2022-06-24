@@ -55,6 +55,7 @@ final class DependenciesNodeManipulator implements AutoCloseable {
         this.providedDependenciesToInsert = new LinkedHashMap<>();
         this.existingDependenciesToModify = new LinkedHashMap<>();
         this.compileRuntimeDependenciesToAppend = new LinkedHashMap<>();
+        this.remainingDependenciesToOverride = new LinkedHashMap<>();
         this.toCommit = false;
         this.prefixForLoggingAfterCommit = null;
         this.logger = logger;
@@ -159,6 +160,24 @@ final class DependenciesNodeManipulator implements AutoCloseable {
         }
     }
 
+    /**
+     * Add {@code <exclusions><exclusion><groupId>*</groupId></exclusion></exclusions>} to remaining dependencies.
+     *
+     * <p>A typical case is a dependency introduced by subprojects, such as: {@code implementation project(":subproject")}
+     */
+    void gleanRemainingDependencies() {
+        final LinkedHashMap<VersionlessDependency, Node> modifiedDependencies = new LinkedHashMap<>();
+        for (final Map.Entry<ScopedDependency, Node> entry : this.existingDependenciesToModify.entrySet()) {
+            modifiedDependencies.put(entry.getKey().getVersionlessDependency(), entry.getValue());
+        }
+
+        this.nodeMap.entrySet().stream().filter(entry -> {
+            return !modifiedDependencies.containsKey(entry.getKey());
+        }).forEach(entry -> {
+            this.remainingDependenciesToOverride.put(entry.getKey(), entry.getValue());
+        });
+    }
+
     void logDependencies(final String prefix) {
         final StringBuilder builder = new StringBuilder();
         builder.append("\n");
@@ -216,8 +235,13 @@ final class DependenciesNodeManipulator implements AutoCloseable {
                 this.logger.lifecycle("    => [MODIFY] {}", entry.getKey());
                 this.modifyExistingNode(entry.getValue(), entry.getKey());
             }
+            for (final Map.Entry<VersionlessDependency, Node> entry : this.remainingDependenciesToOverride.entrySet()) {
+                this.logger.lifecycle("    => [MODIFY] {}", entry.getKey());
+                this.overrideExclusions(entry.getValue());
+            }
 
             this.appendCompileRuntimeDependencies();
+
             this.logger.lifecycle("");
 
             if (this.prefixForLoggingAfterCommit != null) {
@@ -521,6 +545,7 @@ final class DependenciesNodeManipulator implements AutoCloseable {
     private final LinkedHashMap<ScopedDependency, Node> providedDependenciesToInsert;  // key: logging, value: node to add
     private final LinkedHashMap<ScopedDependency, Node> existingDependenciesToModify;  // key: prospect, value: node to modify
     private final LinkedHashMap<ScopedDependency, Node> compileRuntimeDependenciesToAppend;  // key: logging, value: node to add
+    private final LinkedHashMap<VersionlessDependency, Node> remainingDependenciesToOverride;  // key: logging, value: node to modify
 
     private boolean toCommit;
     private String prefixForLoggingAfterCommit;

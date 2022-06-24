@@ -36,8 +36,9 @@ import java.nio.file.attribute.BasicFileAttributes;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -54,7 +55,7 @@ import org.xml.sax.SAXException;
  */
 class TestSubprojects {
     @Test
-    @Disabled
+    @DisabledOnOs(OS.WINDOWS)
     public void test(@TempDir Path tempDir) throws IOException {
         final Path projectDir = prepareProjectDir(tempDir, "testSubprojects");
         final Path subpluginDir = projectDir.resolve("embulk-input-subprojects_subplugin");

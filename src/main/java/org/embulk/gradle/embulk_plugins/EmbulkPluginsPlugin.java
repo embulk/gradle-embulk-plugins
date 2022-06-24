@@ -185,6 +185,8 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                         }
                     }
 
+                    xml.gleanRemainingDependencies();
+
                     xml.toCommit("<dependencies> in pom.xml after manipulation:");
                 }
             });
