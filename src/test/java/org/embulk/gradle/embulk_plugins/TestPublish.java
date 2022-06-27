@@ -117,7 +117,7 @@ class TestPublish {
         // The behavior is not intended, not very good, but acceptable as of now.
         //
         // TODO: Upgrade the base Gradle, and test it in later Gradle.
-        assertEquals(8, dependenciesEach.getLength());
+        assertEquals(10, dependenciesEach.getLength());
 
         // "org.embulk:embulk-spi:0.10.35" => originally in build.gradle as "compileOnly".
         final Element dependency0 = (Element) dependenciesEach.item(0);
@@ -194,5 +194,25 @@ class TestPublish {
         assertNoElement(dependency7, "classifier");
         assertSingleTextContentByTagName("compile", dependency7, "scope");
         assertExcludeAll(dependency7);
+
+        // "example:dummy:10.11.12" => added in "additionalDependencyDeclarations".
+        final Element dependency8 = (Element) dependenciesEach.item(8);
+        assertSingleTextContentByTagName("example", dependency8, "groupId");
+        assertSingleTextContentByTagName("dummy", dependency8, "artifactId");
+        assertSingleTextContentByTagName("10.11.12", dependency8, "version");
+        assertNoElement(dependency8, "classifier");
+        assertSingleTextContentByTagName("compile", dependency8, "scope");
+        assertNoElement(dependency8, "optional");
+        assertExcludeAll(dependency8);
+
+        // "test:fake:3.14" (optional: true) => added in "additionalDependencyDeclarations".
+        final Element dependency9 = (Element) dependenciesEach.item(9);
+        assertSingleTextContentByTagName("test", dependency9, "groupId");
+        assertSingleTextContentByTagName("fake", dependency9, "artifactId");
+        assertSingleTextContentByTagName("3.14", dependency9, "version");
+        assertNoElement(dependency9, "classifier");
+        assertSingleTextContentByTagName("runtime", dependency9, "scope");
+        assertSingleTextContentByTagName("true", dependency9, "optional");
+        assertExcludeAll(dependency9);
     }
 }

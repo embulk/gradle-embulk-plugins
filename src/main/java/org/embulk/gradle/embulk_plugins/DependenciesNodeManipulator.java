@@ -22,6 +22,7 @@ import groovy.xml.QName;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.gradle.api.GradleException;
 import org.gradle.api.logging.Logger;
@@ -56,6 +57,8 @@ final class DependenciesNodeManipulator implements AutoCloseable {
         this.existingDependenciesToModify = new LinkedHashMap<>();
         this.compileRuntimeDependenciesToAppend = new LinkedHashMap<>();
         this.remainingDependenciesToOverride = new LinkedHashMap<>();
+        this.additionalDependencies = new LinkedHashMap<>();
+
         this.toCommit = false;
         this.prefixForLoggingAfterCommit = null;
         this.logger = logger;
@@ -178,6 +181,12 @@ final class DependenciesNodeManipulator implements AutoCloseable {
         });
     }
 
+    void addDependencyDeclarations(final List<ScopedDependency> dependencies) {
+        for (final ScopedDependency dependency : dependencies) {
+            this.additionalDependencies.put(dependency, newDependencyNode(dependency));
+        }
+    }
+
     void logDependencies(final String prefix) {
         final StringBuilder builder = new StringBuilder();
         builder.append("\n");
@@ -241,6 +250,7 @@ final class DependenciesNodeManipulator implements AutoCloseable {
             }
 
             this.appendCompileRuntimeDependencies();
+            this.appendAdditionalDependencies();
 
             this.logger.lifecycle("");
 
@@ -274,6 +284,14 @@ final class DependenciesNodeManipulator implements AutoCloseable {
     @SuppressWarnings("unchecked")
     private void appendCompileRuntimeDependencies() {
         for (final Map.Entry<ScopedDependency, Node> entry : this.compileRuntimeDependenciesToAppend.entrySet()) {
+            this.logger.lifecycle("    => [APPEND] {}", entry.getKey());
+            this.dependenciesChildren.add(entry.getValue());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void appendAdditionalDependencies() {
+        for (final Map.Entry<ScopedDependency, Node> entry : this.additionalDependencies.entrySet()) {
             this.logger.lifecycle("    => [APPEND] {}", entry.getKey());
             this.dependenciesChildren.add(entry.getValue());
         }
@@ -515,6 +533,9 @@ final class DependenciesNodeManipulator implements AutoCloseable {
         }
         node.appendNode("version", dependency.getVersion());
         node.appendNode("scope", dependency.getScope().toMavenString());
+        if (dependency.isOptional()) {
+            node.appendNode("optional", true);
+        }
 
         final Node exclusionsNode = node.appendNode("exclusions");
         exclusionsNode.append(newExclusionNode());
@@ -546,6 +567,7 @@ final class DependenciesNodeManipulator implements AutoCloseable {
     private final LinkedHashMap<ScopedDependency, Node> existingDependenciesToModify;  // key: prospect, value: node to modify
     private final LinkedHashMap<ScopedDependency, Node> compileRuntimeDependenciesToAppend;  // key: logging, value: node to add
     private final LinkedHashMap<VersionlessDependency, Node> remainingDependenciesToOverride;  // key: logging, value: node to modify
+    private final LinkedHashMap<ScopedDependency, Node> additionalDependencies;  // key: logging, value: node to add
 
     private boolean toCommit;
     private String prefixForLoggingAfterCommit;
