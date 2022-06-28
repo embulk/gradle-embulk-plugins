@@ -7,11 +7,11 @@ Quick Guide
 ```
 plugins {
     id "java"
-    id "maven-publish"  // Note that "uploadArchives" with the "maven" plugin is no longer supported.
+    id "maven-publish"
 
     // Once this Gradle plugin is applied, its transitive dependencies are automatically updated to be flattened.
     // The update affects the default `jar` task, and default Maven uploading mechanisms as well.
-    id "org.embulk.embulk-plugins" version "0.4.2"
+    id "org.embulk.embulk-plugins" version "0.5.0"
 }
 
 group = "com.example"
@@ -254,7 +254,7 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
       ```
       plugins {
           id "maven-publish"
-          id "org.embulk.embulk-plugins" version "0.4.2"
+          id "org.embulk.embulk-plugins" version "0.5.0"
       }
     * Using [legacy plugin application](https://docs.gradle.org/current/userguide/plugins.html#sec:old_plugin_application):
       ```
@@ -265,7 +265,7 @@ In the beginning of your Embulk plugin project, or after migrating your Embulk p
           }
       }
       dependencies {
-          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.4.2"
+          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.5.0"
       }
 
       apply plugin: "maven-publish"
