@@ -1,6 +1,14 @@
 Gradle plugin for Embulk plugins
 =================================
 
+Versions
+---------
+
+| Plugin version | Supported Gradle versions | Method to manipulate `pom.xml`            |
+| -------------- | ------------------------- | ----------------------------------------- |
+| v0.4.2         | Gradle 6                  | Done by additional Gradle `configuration` |
+| v0.5.2         | Gradle 6 & 7              | Done by `pom.withXml`                     |
+
 Quick Guide
 ------------
 
@@ -11,7 +19,7 @@ plugins {
 
     // Once this Gradle plugin is applied, its transitive dependencies are automatically updated to be flattened.
     // The update affects the default `jar` task, and default Maven uploading mechanisms as well.
-    id "org.embulk.embulk-plugins" version "0.5.0"
+    id "org.embulk.embulk-plugins" version "0.5.2"
 }
 
 group = "com.example"
@@ -245,7 +253,7 @@ Embulk plugins are sensitive about dependency libraries. Your project will have 
       ```
       plugins {
           id "maven-publish"
-          id "org.embulk.embulk-plugins" version "0.5.0"
+          id "org.embulk.embulk-plugins" version "0.5.2"
       }
     * Using [legacy plugin application](https://docs.gradle.org/current/userguide/plugins.html#sec:old_plugin_application):
       ```
@@ -256,7 +264,7 @@ Embulk plugins are sensitive about dependency libraries. Your project will have 
           }
       }
       dependencies {
-          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.5.0"
+          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.5.2"
       }
 
       apply plugin: "maven-publish"
