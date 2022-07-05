@@ -195,19 +195,16 @@ final class ProspectiveDependencies implements Iterable<ScopedDependency> {
     private static class UnexpectedDependencyException extends Exception {
         UnexpectedDependencyException(
                 final LinkedHashSet<VersionlessDependency> duplicates,
-                final LinkedHashSet<ProjectComponentIdentifier> projects,
                 final ArrayList<LibraryBinaryIdentifier> libs,
                 final ArrayList<ComponentIdentifier> others) {
-            super(buildMessage(duplicates, projects, libs, others));
+            super(buildMessage(duplicates, libs, others));
             this.duplicates = duplicates;
-            this.projects = projects;
             this.libs = libs;
             this.others = others;
         }
 
         static UnexpectedDependencyException merge(final UnexpectedDependencyException... exceptions) {
             final LinkedHashSet<VersionlessDependency> mergedDuplicates = new LinkedHashSet<>();
-            final LinkedHashSet<ProjectComponentIdentifier> mergedProjects = new LinkedHashSet<>();
             final ArrayList<LibraryBinaryIdentifier> mergedLibs = new ArrayList<>();
             final ArrayList<ComponentIdentifier> mergedOthers = new ArrayList<>();
             for (final UnexpectedDependencyException ex : exceptions) {
@@ -215,16 +212,14 @@ final class ProspectiveDependencies implements Iterable<ScopedDependency> {
                     continue;
                 }
                 mergedDuplicates.addAll(ex.duplicates);
-                mergedProjects.addAll(ex.projects);
                 mergedLibs.addAll(ex.libs);
                 mergedOthers.addAll(ex.others);
             }
-            return new UnexpectedDependencyException(mergedDuplicates, mergedProjects, mergedLibs, mergedOthers);
+            return new UnexpectedDependencyException(mergedDuplicates, mergedLibs, mergedOthers);
         }
 
         private static String buildMessage(
                 final LinkedHashSet<VersionlessDependency> duplicates,
-                final LinkedHashSet<ProjectComponentIdentifier> projects,
                 final ArrayList<LibraryBinaryIdentifier> libs,
                 final ArrayList<ComponentIdentifier> others) {
             final StringBuilder exceptionMessage = new StringBuilder();
@@ -233,15 +228,6 @@ final class ProspectiveDependencies implements Iterable<ScopedDependency> {
                 exceptionMessage.append("Dependency duplicates are found: ");
                 exceptionMessage.append(
                         duplicates.stream().map(VersionlessDependency::toString).collect(Collectors.joining(", ", "[", "]")));
-            }
-
-            if (!projects.isEmpty()) {
-                if (exceptionMessage.length() > 0) {
-                    exceptionMessage.append(" ");
-                }
-                exceptionMessage.append("Project dependencies are not supported as of now: ");
-                exceptionMessage.append(
-                        projects.stream().map(ProjectComponentIdentifier::getDisplayName).collect(Collectors.joining(", ", "[", "]")));
             }
 
             if (!libs.isEmpty()) {
@@ -266,7 +252,6 @@ final class ProspectiveDependencies implements Iterable<ScopedDependency> {
         }
 
         private final LinkedHashSet<VersionlessDependency> duplicates;
-        private final LinkedHashSet<ProjectComponentIdentifier> projects;
         private final ArrayList<LibraryBinaryIdentifier> libs;
         private final ArrayList<ComponentIdentifier> others;
     }
@@ -277,7 +262,6 @@ final class ProspectiveDependencies implements Iterable<ScopedDependency> {
         final LinkedHashMap<VersionlessDependency, String> versionMap = new LinkedHashMap<>();
 
         final LinkedHashSet<VersionlessDependency> duplicates = new LinkedHashSet<>();
-        final LinkedHashSet<ProjectComponentIdentifier> projects = new LinkedHashSet<>();
         final ArrayList<LibraryBinaryIdentifier> libs = new ArrayList<>();
         final ArrayList<ComponentIdentifier> others = new ArrayList<>();
 
@@ -285,8 +269,9 @@ final class ProspectiveDependencies implements Iterable<ScopedDependency> {
             final ComponentIdentifier componentIdentifier = artifact.getId().getComponentIdentifier();
 
             if (componentIdentifier instanceof ProjectComponentIdentifier) {
+                // @@@
                 // TODO: Support project dependencies.
-                projects.add((ProjectComponentIdentifier) componentIdentifier);
+                // @@@
             } else if (componentIdentifier instanceof ModuleComponentIdentifier) {
                 final ModuleComponentIdentifier moduleIdentifier = (ModuleComponentIdentifier) componentIdentifier;
                 final VersionlessDependency module = VersionlessDependency.fromModule(moduleIdentifier, artifact);
@@ -302,8 +287,8 @@ final class ProspectiveDependencies implements Iterable<ScopedDependency> {
             }
         }
 
-        if ((!duplicates.isEmpty()) || (!projects.isEmpty()) || (!libs.isEmpty()) || (!others.isEmpty())) {
-            throw new UnexpectedDependencyException(duplicates, projects, libs, others);
+        if ((!duplicates.isEmpty()) || (!libs.isEmpty()) || (!others.isEmpty())) {
+            throw new UnexpectedDependencyException(duplicates, libs, others);
         }
 
         return versionMap;
