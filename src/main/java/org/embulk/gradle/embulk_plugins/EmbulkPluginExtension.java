@@ -37,10 +37,6 @@ import org.gradle.api.provider.Property;
  *     mainClass = "org.embulk.input.example.ExampleInputPlugin"
  *     category = "input"
  *     type = "example"
- *     // mainJar = "shadowJar"
- *     ignoreConflicts = [
- *         [ group: "...", module: "..." ]
- *     ]
  * }}</pre>
  */
 public class EmbulkPluginExtension {
@@ -55,7 +51,7 @@ public class EmbulkPluginExtension {
         this.generatesModuleMetadata = objectFactory.property(Boolean.class);
         this.generatesModuleMetadata.set(false);
         this.directPomManipulation = objectFactory.property(Boolean.class);
-        this.directPomManipulation.set(false);
+        this.directPomManipulation.set(true);
         this.ignoreConflicts = castedListProperty(objectFactory);
     }
 
@@ -111,28 +107,19 @@ public class EmbulkPluginExtension {
                     + String.join(", ", CATEGORIES_ARRAY) + " ]");
         }
 
+        if (this.mainJar.isPresent()) {
+            throw new GradleException(
+                    "Failed to configure \"embulkPlugin\" because \"mainJar\" is no longer supported.");
+        }
+
+        if (!this.directPomManipulation.getOrElse(true)) {
+            throw new GradleException(
+                    "Failed to configure \"embulkPlugin\" because \"directPomManipulation = false\" is no longer supported.");
+        }
+
         if (this.ignoreConflicts.isPresent() && !this.ignoreConflicts.get().isEmpty()) {
-            for (final Map<String, String> module : this.ignoreConflicts.get()) {
-                try {
-                    for (final Map.Entry<String, String> moduleAttribute : module.entrySet()) {
-                        // Calling getKey() and getValue() to trigger type checks.
-                        final String key = moduleAttribute.getKey();
-                        final String value = moduleAttribute.getValue();
-                    }
-                } catch (final ClassCastException ex) {
-                    throw new GradleException(
-                            "Failed to configure \"embulkPlugin\" because \"ignoreConflicts\" does not consist only of "
-                            + "String:String Maps.", ex);
-                }
-
-                final Set<String> moduleKeys = module.keySet();
-                if (moduleKeys.size() != 2 || (!moduleKeys.contains("group")) || (!moduleKeys.contains("module"))) {
-                    throw new GradleException(
-                            "Failed to configure \"embulkPlugin\" because \"ignoreConflicts\"'s Map does not consist only of "
-                            + "\"group\" and \"module\".");
-                }
-            }
-
+            throw new GradleException(
+                    "Failed to configure \"embulkPlugin\" because \"ignoreConflicts\" is no longer supported.");
         }
     }
 

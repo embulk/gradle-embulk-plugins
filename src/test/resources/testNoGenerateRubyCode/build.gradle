@@ -10,7 +10,7 @@ version = "0.9.2"
 description = "Embulk input plugin for testing 4"
 
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
 sourceCompatibility = "1.8"
@@ -22,7 +22,7 @@ tasks.withType(JavaCompile) {
 }
 
 dependencies {
-    compileOnly "org.embulk:embulk-core:0.9.17"
+    compileOnly "org.embulk:embulk-core:0.10.35"
     compile "javax.json:javax.json-api:1.1.4"
     compile "com.github.jnr:jffi:1.2.23"
     compile "com.github.jnr:jffi:1.2.23:native"

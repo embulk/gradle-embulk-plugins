@@ -6,11 +6,11 @@ archivesBaseName = "${project.name}"
 description = "Embulk input plugin for testing subproject sub"
 
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
 dependencies {
-    compileOnly "org.embulk:embulk-core:0.9.23"
+    compileOnly "org.embulk:embulk-core:0.10.35"
     compile project(":sublib")
     compile "org.apache.commons:commons-math3:3.6.1"
 }

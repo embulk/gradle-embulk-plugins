@@ -11,7 +11,7 @@ version = "0.1.9"
 description = "Embulk input plugin for testing 2"
 
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
 sourceCompatibility = "1.8"
@@ -23,7 +23,7 @@ tasks.withType(JavaCompile) {
 }
 
 dependencies {
-    compileOnly "org.embulk:embulk-core:0.9.17"
+    compileOnly "org.embulk:embulk-core:0.10.35"
     compile("org.glassfish.jersey.core:jersey-client:2.25.1") {
         exclude group: "javax.inject", module: "javax.inject"
     }
@@ -38,10 +38,6 @@ embulkPlugin {
     mainClass = "org.embulk.input.test1.Test1InputPlugin"
     category = "input"
     type = "test1"
-    ignoreConflicts = [
-        [ group: "org.apache.bval", module: "bval-core" ],
-        [ group: "commons-beanutils", module: "commons-beanutils-core" ],
-    ]
 }
 
 publishing {

@@ -36,9 +36,8 @@ import java.nio.file.attribute.BasicFileAttributes;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledOnOs;
-import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -55,13 +54,13 @@ import org.xml.sax.SAXException;
  */
 class TestSubprojects {
     @Test
-    @DisabledOnOs(OS.WINDOWS)
+    @Disabled
     public void test(@TempDir Path tempDir) throws IOException {
         final Path projectDir = prepareProjectDir(tempDir, "testSubprojects");
         final Path subpluginDir = projectDir.resolve("embulk-input-subprojects_subplugin");
 
-        runGradle(projectDir, ":dependencies", "--configuration", "embulkPluginRuntime", "--write-locks");
-        final Path rootLockfilePath = projectDir.resolve("gradle/dependency-locks/embulkPluginRuntime.lockfile");
+        runGradle(projectDir, ":dependencies", "--configuration", "runtimeClasspath", "--write-locks");
+        final Path rootLockfilePath = projectDir.resolve("gradle/dependency-locks/runtimeClasspath.lockfile");
         for (final String line : Files.readAllLines(rootLockfilePath, StandardCharsets.UTF_8)) {
             System.out.println(line);
         }
@@ -71,8 +70,8 @@ class TestSubprojects {
         assertFileDoesNotContain(rootLockfilePath, "org.embulk.input.test_subprojects:sublib:0.6.14");
         assertFileDoesNotContain(rootLockfilePath, "org.apache.commons:commons-math3:3.6.1");
 
-        runGradle(projectDir, ":embulk-input-subprojects_subplugin:dependencies", "--configuration", "embulkPluginRuntime", "--write-locks");
-        final Path subpluginLockfilePath = subpluginDir.resolve("gradle/dependency-locks/embulkPluginRuntime.lockfile");
+        runGradle(projectDir, ":embulk-input-subprojects_subplugin:dependencies", "--configuration", "runtimeClasspath", "--write-locks");
+        final Path subpluginLockfilePath = subpluginDir.resolve("gradle/dependency-locks/runtimeClasspath.lockfile");
         for (final String line : Files.readAllLines(subpluginLockfilePath, StandardCharsets.UTF_8)) {
             System.out.println(line);
         }

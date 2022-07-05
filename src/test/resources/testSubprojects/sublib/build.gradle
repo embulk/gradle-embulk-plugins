@@ -5,7 +5,7 @@ archivesBaseName = "${project.name}"
 description = "Sub-library for testing subproject"
 
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
 dependencies {
