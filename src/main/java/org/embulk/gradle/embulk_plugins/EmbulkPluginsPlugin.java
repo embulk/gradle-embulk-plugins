@@ -186,6 +186,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
                     }
 
                     xml.gleanRemainingDependencies();
+                    xml.addDependencyDeclarations(extension.getAdditionalDependencyDeclarationsAsScopedDependency());
 
                     xml.toCommit("<dependencies> in pom.xml after manipulation:");
                 }

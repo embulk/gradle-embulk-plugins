@@ -20,8 +20,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.model.ObjectFactory;
@@ -52,6 +54,7 @@ public class EmbulkPluginExtension {
         this.generatesModuleMetadata.set(false);
         this.directPomManipulation = objectFactory.property(Boolean.class);
         this.directPomManipulation.set(true);
+        this.additionalDependencyDeclarations = castedListProperty(objectFactory);
         this.ignoreConflicts = castedListProperty(objectFactory);
     }
 
@@ -81,6 +84,18 @@ public class EmbulkPluginExtension {
 
     public ListProperty<Map<String, String>> getIgnoreConflicts() {
         return this.ignoreConflicts;
+    }
+
+    public ListProperty<Map<String, Object>> getAdditionalDependencyDeclarations() {
+        return this.additionalDependencyDeclarations;
+    }
+
+    List<ScopedDependency> getAdditionalDependencyDeclarationsAsScopedDependency() {
+        if (this.additionalDependencyDeclarations.isPresent() && !this.additionalDependencyDeclarations.get().isEmpty()) {
+            return Collections.unmodifiableList(
+                    this.additionalDependencyDeclarations.get().stream().map(ScopedDependency::ofMap).collect(Collectors.toList()));
+        }
+        return Collections.emptyList();
     }
 
     void checkValidity() {
@@ -121,6 +136,15 @@ public class EmbulkPluginExtension {
             throw new GradleException(
                     "Failed to configure \"embulkPlugin\" because \"ignoreConflicts\" is no longer supported.");
         }
+
+        if (this.additionalDependencyDeclarations.isPresent() && !this.additionalDependencyDeclarations.get().isEmpty()) {
+            try {
+                this.getAdditionalDependencyDeclarationsAsScopedDependency();
+            } catch (final RuntimeException ex) {
+                throw new GradleException(
+                        "Failed to configure \"embulkPlugin\" because \"additionalDependencyDeclarations\" is invalid.", ex);
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -151,4 +175,5 @@ public class EmbulkPluginExtension {
     private final Property<Boolean> generatesModuleMetadata;
     private final Property<Boolean> directPomManipulation;
     private final ListProperty<Map<String, String>> ignoreConflicts;
+    private final ListProperty<Map<String, Object>> additionalDependencyDeclarations;
 }

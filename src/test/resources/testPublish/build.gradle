@@ -34,6 +34,10 @@ embulkPlugin {
     mainClass = "org.embulk.input.test1.Test1InputPlugin"
     category = "input"
     type = "test1"
+    additionalDependencyDeclarations = [
+        [ groupId: "example", artifactId: "dummy", version: "10.11.12", scope: "compile" ],
+        [ groupId: "test", artifactId: "fake", version: "3.14", scope: "runtime", optional: true ],
+    ]
 }
 
 publishing {
