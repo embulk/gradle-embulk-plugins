@@ -18,7 +18,7 @@ package org.embulk.gradle.embulk_plugins;
 
 import groovy.util.Node;
 import groovy.util.NodeList;
-import groovy.xml.QName;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -82,16 +82,8 @@ final class DependenciesNodeManipulator implements AutoCloseable {
             final Node dependencyNode;
             try {
                 dependencyNode = (Node) dependencyObject;
-                if (dependencyNode.name() instanceof QName) {
-                    final QName dependencyName = (QName) dependencyNode.name();
-                    if (!"dependency".equals(dependencyName.getQualifiedName())) {
-                        throw new GradleException("<dependencies> includes a non-<dependency> child node unexpectedly.");
-                    }
-                } else if (dependencyNode.name() instanceof String) {
-                    final String dependencyName = (String) dependencyNode.name();
-                    if (!"dependency".equals(dependencyName)) {
-                        throw new GradleException("<dependencies> includes a non-<dependency> child node unexpectedly.");
-                    }
+                if (!"dependency".equals(getNodeName(dependencyNode))) {
+                    throw new GradleException("<dependencies> includes a non-<dependency> child node unexpectedly.");
                 }
             } catch (final ClassCastException ex) {
                 throw new GradleException("<dependencies> includes an invalid child node unexpectedly.", ex);
@@ -112,8 +104,7 @@ final class DependenciesNodeManipulator implements AutoCloseable {
             final Node dependencyNode;
             try {
                 dependencyNode = (Node) dependencyObject;
-                final QName dependencyName = (QName) dependencyNode.name();
-                if (!"dependency".equals(dependencyName.getQualifiedName())) {
+                if (!"dependency".equals(getNodeName(dependencyNode))) {
                     throw new GradleException("<dependencies> includes a non-<dependency> child node unexpectedly.");
                 }
             } catch (final ClassCastException ex) {
@@ -194,16 +185,8 @@ final class DependenciesNodeManipulator implements AutoCloseable {
             final Node dependencyNode;
             try {
                 dependencyNode = (Node) dependencyObject;
-                if (dependencyNode.name() instanceof QName) {
-                    final QName dependencyName = (QName) dependencyNode.name();
-                    if (!"dependency".equals(dependencyName.getQualifiedName())) {
-                        throw new GradleException("<dependencies> includes a non-<dependency> child node unexpectedly.");
-                    }
-                } else if (dependencyNode.name() instanceof String) {
-                    final String dependencyName = (String) dependencyNode.name();
-                    if (!"dependency".equals(dependencyName)) {
-                        throw new GradleException("<dependencies> includes a non-<dependency> child node unexpectedly.");
-                    }
+                if (!"dependency".equals(getNodeName(dependencyNode))) {
+                    throw new GradleException("<dependencies> includes a non-<dependency> child node unexpectedly.");
                 }
             } catch (final ClassCastException ex) {
                 throw new GradleException("<dependencies> includes an invalid child node unexpectedly.", ex);
@@ -551,6 +534,78 @@ final class DependenciesNodeManipulator implements AutoCloseable {
 
     private static Node newTextNode(final String key, final String value) {
         return new Node(null, key, value);
+    }
+
+    private static String getNodeName(final Node node) {
+        final Object name = node.name();
+        if (name instanceof String) {
+            return (String) name;
+        } else if ("groovy.namespace.QName".equals(name.getClass().getCanonicalName())
+                && METHOD_NAMESPACE_GET_QUALIFIED_NAME != null) {
+            try {
+                return (String) METHOD_NAMESPACE_GET_QUALIFIED_NAME.invoke(name);
+            } catch (final Throwable ex) {
+                final ClassCastException ex2 = new ClassCastException();
+                ex2.initCause(ex);
+                throw ex2;
+            }
+        } else if ("groovy.xml.QName".equals(name.getClass().getCanonicalName())) {
+            try {
+                return (String) METHOD_XML_GET_QUALIFIED_NAME.invoke(name);
+            } catch (final Throwable ex) {
+                final ClassCastException ex2 = new ClassCastException();
+                ex2.initCause(ex);
+                throw ex2;
+            }
+        }
+        return null;
+    }
+
+    private static final Class<?> CLASS_NAMESPACE_QNAME;  // groovy.namespace.QName, which is only in Gradle 7.
+    private static final Method METHOD_NAMESPACE_GET_QUALIFIED_NAME;
+    private static final Class<?> CLASS_XML_QNAME;  // groovy.xml.QName, which is in Gradle 6, but deprecated in Gradle 7.
+    private static final Method METHOD_XML_GET_QUALIFIED_NAME;
+
+    static {
+        Class<?> classNamespaceQName = null;
+        try {
+            classNamespaceQName = Class.forName("groovy.namespace.QName");
+        } catch (final ClassNotFoundException ex) {
+            // Pass-through.
+        }
+        CLASS_NAMESPACE_QNAME = classNamespaceQName;
+
+        if (CLASS_NAMESPACE_QNAME == null) {
+            METHOD_NAMESPACE_GET_QUALIFIED_NAME = null;
+        } else {
+            Method methodNamespaceGetQualifiedName = null;
+            try {
+                methodNamespaceGetQualifiedName = CLASS_NAMESPACE_QNAME.getMethod("getQualifiedName");
+            } catch (final NoSuchMethodException ex) {
+                // Pass-through.
+            }
+            METHOD_NAMESPACE_GET_QUALIFIED_NAME = methodNamespaceGetQualifiedName;
+        }
+
+        Class<?> classXmlQName = null;
+        try {
+            classXmlQName = Class.forName("groovy.xml.QName");
+        } catch (final ClassNotFoundException ex) {
+            // Pass-through.
+        }
+        CLASS_XML_QNAME = classXmlQName;
+
+        if (CLASS_XML_QNAME == null) {
+            METHOD_XML_GET_QUALIFIED_NAME = null;
+        } else {
+            Method methodXmlGetQualifiedName = null;
+            try {
+                methodXmlGetQualifiedName = CLASS_XML_QNAME.getMethod("getQualifiedName");
+            } catch (final NoSuchMethodException ex) {
+                // Pass-through.
+            }
+            METHOD_XML_GET_QUALIFIED_NAME = methodXmlGetQualifiedName;
+        }
     }
 
     // The primary target XML node.
