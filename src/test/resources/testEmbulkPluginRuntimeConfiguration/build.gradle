@@ -1,6 +1,5 @@
 plugins {
     id "java"
-    id "maven"
     id "maven-publish"
     id "org.embulk.embulk-plugins"
 }
@@ -24,14 +23,14 @@ tasks.withType(JavaCompile) {
 
 dependencies {
     compileOnly "org.embulk:embulk-core:0.10.35"
-    compile("org.glassfish.jersey.core:jersey-client:2.25.1") {
+    implementation("org.glassfish.jersey.core:jersey-client:2.25.1") {
         exclude group: "javax.inject", module: "javax.inject"
     }
-    compile("org.apache.bval:bval-jsr303:0.5") {
+    implementation("org.apache.bval:bval-jsr303:0.5") {
         exclude group: "org.apache.commons", module: "commons-lang3"
     }
-    compile "com.github.jnr:jffi:1.2.23"
-    compile "com.github.jnr:jffi:1.2.23:native"
+    implementation "com.github.jnr:jffi:1.2.23"
+    implementation "com.github.jnr:jffi:1.2.23:native"
 }
 
 embulkPlugin {

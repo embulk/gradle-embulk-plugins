@@ -180,7 +180,7 @@ class TestSubprojects {
         assertSingleTextContentByTagName("sublib", dependencyRoot4, "artifactId");
         assertSingleTextContentByTagName("0.6.14", dependencyRoot4, "version");
         assertNoElement(dependencyRoot4, "classifier");
-        assertSingleTextContentByTagName("compile", dependencyRoot4, "scope");
+        assertSingleTextContentByTagName("runtime", dependencyRoot4, "scope");
         assertExcludeAll(dependencyRoot4);
 
         final Element dependencyRoot5 = (Element) dependenciesRootEach.item(5);
@@ -196,7 +196,7 @@ class TestSubprojects {
         assertSingleTextContentByTagName("commons-lang", dependencyRoot6, "artifactId");
         assertSingleTextContentByTagName("2.6", dependencyRoot6, "version");
         assertNoElement(dependencyRoot6, "classifier");
-        assertSingleTextContentByTagName("compile", dependencyRoot6, "scope");
+        assertSingleTextContentByTagName("runtime", dependencyRoot6, "scope");
         assertExcludeAll(dependencyRoot6);
 
         final Path subVersionDir = projectDir.resolve("build/mavenLocalSubprojects/org/embulk/input/test_subprojects/embulk-input-subprojects_subplugin/0.6.14");
@@ -293,7 +293,7 @@ class TestSubprojects {
         assertSingleTextContentByTagName("sublib", dependencySub4, "artifactId");
         assertSingleTextContentByTagName("0.6.14", dependencySub4, "version");
         assertNoElement(dependencySub4, "classifier");
-        assertSingleTextContentByTagName("compile", dependencySub4, "scope");
+        assertSingleTextContentByTagName("runtime", dependencySub4, "scope");
         assertExcludeAll(dependencySub4);
 
         final Element dependencySub5 = (Element) dependenciesSubEach.item(5);
@@ -309,7 +309,7 @@ class TestSubprojects {
         assertSingleTextContentByTagName("commons-lang", dependencySub6, "artifactId");
         assertSingleTextContentByTagName("2.6", dependencySub6, "version");
         assertNoElement(dependencySub6, "classifier");
-        assertSingleTextContentByTagName("compile", dependencySub6, "scope");
+        assertSingleTextContentByTagName("runtime", dependencySub6, "scope");
         assertExcludeAll(dependencySub6);
     }
 }
