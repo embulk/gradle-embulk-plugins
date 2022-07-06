@@ -38,6 +38,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import org.gradle.util.GradleVersion;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -63,7 +64,12 @@ class TestSubprojects {
         final Path subpluginDir = projectDir.resolve("embulk-input-subprojects_subplugin");
 
         runGradle(projectDir, ":dependencies", "--configuration", "runtimeClasspath", "--write-locks");
-        final Path rootLockfilePath = projectDir.resolve("gradle/dependency-locks/runtimeClasspath.lockfile");
+        final Path rootLockfilePath;
+        if (GradleVersion.current().compareTo(GradleVersion.version("7.0")) >= 0) {
+            rootLockfilePath = projectDir.resolve("gradle.lockfile");
+        } else {
+            rootLockfilePath = projectDir.resolve("gradle/dependency-locks/runtimeClasspath.lockfile");
+        }
         for (final String line : Files.readAllLines(rootLockfilePath, StandardCharsets.UTF_8)) {
             System.out.println(line);
         }
@@ -74,7 +80,12 @@ class TestSubprojects {
         assertFileDoesNotContain(rootLockfilePath, "org.apache.commons:commons-math3:3.6.1");
 
         runGradle(projectDir, ":embulk-input-subprojects_subplugin:dependencies", "--configuration", "runtimeClasspath", "--write-locks");
-        final Path subpluginLockfilePath = subpluginDir.resolve("gradle/dependency-locks/runtimeClasspath.lockfile");
+        final Path subpluginLockfilePath;
+        if (GradleVersion.current().compareTo(GradleVersion.version("7.0")) >= 0) {
+            subpluginLockfilePath = subpluginDir.resolve("gradle.lockfile");
+        } else {
+            subpluginLockfilePath = subpluginDir.resolve("gradle/dependency-locks/runtimeClasspath.lockfile");
+        }
         for (final String line : Files.readAllLines(subpluginLockfilePath, StandardCharsets.UTF_8)) {
             System.out.println(line);
         }
