@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import org.gradle.util.GradleVersion;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -45,7 +46,12 @@ class TestEmbulkPluginRuntimeConfiguration {
         final Path projectDir = prepareProjectDir(tempDir, "testEmbulkPluginRuntimeConfiguration");
 
         runGradle(projectDir, "dependencies", "--configuration", "runtimeClasspath", "--write-locks");
-        final Path lockfilePath = projectDir.resolve("gradle/dependency-locks/runtimeClasspath.lockfile");
+        final Path lockfilePath;
+        if (GradleVersion.current().compareTo(GradleVersion.version("7.0")) >= 0) {
+            lockfilePath = projectDir.resolve("gradle.lockfile");
+        } else {
+            lockfilePath = projectDir.resolve("gradle/dependency-locks/runtimeClasspath.lockfile");
+        }
         assertTrue(Files.exists(lockfilePath));
         assertFileDoesNotContain(lockfilePath, "javax.inject:javax.inject");
         assertFileDoesNotContain(lockfilePath, "org.apache.commons:commons-lang3");

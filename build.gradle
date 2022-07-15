@@ -1,6 +1,5 @@
 plugins {
     id "java"
-    id "maven"
     id "java-gradle-plugin"
     id "checkstyle"
     id "com.gradle.plugin-publish" version "0.20.0"

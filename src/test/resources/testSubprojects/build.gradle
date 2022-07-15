@@ -28,8 +28,8 @@ allprojects {
 dependencies {
     compileOnly "org.embulk:embulk-api:0.10.35"
     compileOnly "org.embulk:embulk-spi:0.10.35"
-    compile project(":sublib")
-    compile "commons-io:commons-io:2.6"
+    implementation project(":sublib")
+    implementation "commons-io:commons-io:2.6"
 }
 
 embulkPlugin {

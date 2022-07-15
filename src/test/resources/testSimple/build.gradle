@@ -1,6 +1,5 @@
 plugins {
     id "java"
-    id "maven"
     id "maven-publish"
     id "org.embulk.embulk-plugins"
 }
@@ -41,7 +40,6 @@ embulkPlugin {
     mainClass = "org.embulk.input.simple.SimpleInputPlugin"
     category = "input"
     type = "simple"
-    directPomManipulation = true
 }
 
 publishing {

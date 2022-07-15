@@ -38,6 +38,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import org.gradle.util.GradleVersion;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -63,7 +64,12 @@ class TestSubprojects {
         final Path subpluginDir = projectDir.resolve("embulk-input-subprojects_subplugin");
 
         runGradle(projectDir, ":dependencies", "--configuration", "runtimeClasspath", "--write-locks");
-        final Path rootLockfilePath = projectDir.resolve("gradle/dependency-locks/runtimeClasspath.lockfile");
+        final Path rootLockfilePath;
+        if (GradleVersion.current().compareTo(GradleVersion.version("7.0")) >= 0) {
+            rootLockfilePath = projectDir.resolve("gradle.lockfile");
+        } else {
+            rootLockfilePath = projectDir.resolve("gradle/dependency-locks/runtimeClasspath.lockfile");
+        }
         for (final String line : Files.readAllLines(rootLockfilePath, StandardCharsets.UTF_8)) {
             System.out.println(line);
         }
@@ -74,7 +80,12 @@ class TestSubprojects {
         assertFileDoesNotContain(rootLockfilePath, "org.apache.commons:commons-math3:3.6.1");
 
         runGradle(projectDir, ":embulk-input-subprojects_subplugin:dependencies", "--configuration", "runtimeClasspath", "--write-locks");
-        final Path subpluginLockfilePath = subpluginDir.resolve("gradle/dependency-locks/runtimeClasspath.lockfile");
+        final Path subpluginLockfilePath;
+        if (GradleVersion.current().compareTo(GradleVersion.version("7.0")) >= 0) {
+            subpluginLockfilePath = subpluginDir.resolve("gradle.lockfile");
+        } else {
+            subpluginLockfilePath = subpluginDir.resolve("gradle/dependency-locks/runtimeClasspath.lockfile");
+        }
         for (final String line : Files.readAllLines(subpluginLockfilePath, StandardCharsets.UTF_8)) {
             System.out.println(line);
         }
@@ -180,7 +191,7 @@ class TestSubprojects {
         assertSingleTextContentByTagName("sublib", dependencyRoot4, "artifactId");
         assertSingleTextContentByTagName("0.6.14", dependencyRoot4, "version");
         assertNoElement(dependencyRoot4, "classifier");
-        assertSingleTextContentByTagName("compile", dependencyRoot4, "scope");
+        assertSingleTextContentByTagName("runtime", dependencyRoot4, "scope");
         assertExcludeAll(dependencyRoot4);
 
         final Element dependencyRoot5 = (Element) dependenciesRootEach.item(5);
@@ -196,7 +207,7 @@ class TestSubprojects {
         assertSingleTextContentByTagName("commons-lang", dependencyRoot6, "artifactId");
         assertSingleTextContentByTagName("2.6", dependencyRoot6, "version");
         assertNoElement(dependencyRoot6, "classifier");
-        assertSingleTextContentByTagName("compile", dependencyRoot6, "scope");
+        assertSingleTextContentByTagName("runtime", dependencyRoot6, "scope");
         assertExcludeAll(dependencyRoot6);
 
         final Path subVersionDir = projectDir.resolve("build/mavenLocalSubprojects/org/embulk/input/test_subprojects/embulk-input-subprojects_subplugin/0.6.14");
@@ -293,7 +304,7 @@ class TestSubprojects {
         assertSingleTextContentByTagName("sublib", dependencySub4, "artifactId");
         assertSingleTextContentByTagName("0.6.14", dependencySub4, "version");
         assertNoElement(dependencySub4, "classifier");
-        assertSingleTextContentByTagName("compile", dependencySub4, "scope");
+        assertSingleTextContentByTagName("runtime", dependencySub4, "scope");
         assertExcludeAll(dependencySub4);
 
         final Element dependencySub5 = (Element) dependenciesSubEach.item(5);
@@ -309,7 +320,7 @@ class TestSubprojects {
         assertSingleTextContentByTagName("commons-lang", dependencySub6, "artifactId");
         assertSingleTextContentByTagName("2.6", dependencySub6, "version");
         assertNoElement(dependencySub6, "classifier");
-        assertSingleTextContentByTagName("compile", dependencySub6, "scope");
+        assertSingleTextContentByTagName("runtime", dependencySub6, "scope");
         assertExcludeAll(dependencySub6);
     }
 }

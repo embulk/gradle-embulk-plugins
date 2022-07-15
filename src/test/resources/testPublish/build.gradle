@@ -1,6 +1,5 @@
 plugins {
     id "java"
-    id "maven"
     id "maven-publish"
     id "org.embulk.embulk-plugins"
 }
@@ -25,9 +24,9 @@ tasks.withType(JavaCompile) {
 dependencies {
     compileOnly "org.embulk:embulk-api:0.10.35"
     compileOnly "org.embulk:embulk-spi:0.10.35"
-    compile "org.apache.commons:commons-text:1.7"
-    compile "com.github.jnr:jffi:1.2.23"
-    compile "com.github.jnr:jffi:1.2.23:native"
+    implementation "org.apache.commons:commons-text:1.7"
+    implementation "com.github.jnr:jffi:1.2.23"
+    implementation "com.github.jnr:jffi:1.2.23:native"
 }
 
 embulkPlugin {
