@@ -45,6 +45,7 @@ import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.bundling.AbstractArchiveTask;
 import org.gradle.process.ExecResult;
 
@@ -201,38 +202,47 @@ class Gem extends AbstractArchiveTask {
                 project);
     }
 
+    @Input
     public ListProperty<String> getAuthors() {
         return this.authors;
     }
 
+    @Input
     public Property<String> getSummary() {
         return this.summary;
     }
 
+    @Input
     public ListProperty<String> getEmail() {
         return this.email;
     }
 
+    @Input
     public Property<String> getHomepage() {
         return this.homepage;
     }
 
+    @Input
     public ListProperty<String> getLicenses() {
         return this.licenses;
     }
 
+    @Input
     public ListProperty<String> getDependencies() {
         return this.dependencies;
     }
 
+    @Input
     public MapProperty<String, String> getMetadata() {
         return this.metadata;
     }
 
+    @Input
     public Property<Boolean> getGenerateRubyCode() {
         return this.generateRubyCode;
     }
 
+    @Input
     public Property<Boolean> getGenerateGemspec() {
         return this.generateGemspec;
     }
@@ -240,6 +250,7 @@ class Gem extends AbstractArchiveTask {
     /**
      * Property to configure a dependency notation for JRuby to run `gem build` and `gem push` commands.
      */
+    @Input
     public Property<Object> getJruby() {
         return this.jruby;
     }
