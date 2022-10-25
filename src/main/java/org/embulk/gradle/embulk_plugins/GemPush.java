@@ -34,6 +34,7 @@ import org.gradle.api.logging.Logger;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.InputFile;
+import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.process.ExecResult;
 import org.gradle.work.ChangeType;
@@ -174,6 +175,7 @@ abstract class GemPush extends DefaultTask {
         logger.lifecycle("Executing `gem push` finished successfully.");
     }
 
+    @Internal
     public Property<String> getHost() {
         return this.host;
     }
