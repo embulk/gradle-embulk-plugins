@@ -15,7 +15,7 @@ jobs:
         - windows-latest
         gradle:
         - "6.4.1"
-        - "7.4.2"
+        - "7.5.1"
     steps:
     - name: Set Git's core.autocrlf to false for Windows before checkout
       run: git config --global core.autocrlf false
