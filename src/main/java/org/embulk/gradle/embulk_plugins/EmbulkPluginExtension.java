@@ -39,6 +39,7 @@ import org.gradle.api.provider.Property;
  *     mainClass = "org.embulk.input.example.ExampleInputPlugin"
  *     category = "input"
  *     type = "example"
+ *     // mainJar = "shadowJar"  -- Experimental: It may not work.
  * }}</pre>
  */
 public class EmbulkPluginExtension {
@@ -123,8 +124,7 @@ public class EmbulkPluginExtension {
         }
 
         if (this.mainJar.isPresent()) {
-            throw new GradleException(
-                    "Failed to configure \"embulkPlugin\" because \"mainJar\" is no longer supported.");
+            this.project.getLogger().warn("\"mainJar\" is experimental. Note that it may not work well.");
         }
 
         if (!this.directPomManipulation.getOrElse(true)) {
