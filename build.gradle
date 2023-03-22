@@ -2,15 +2,12 @@ plugins {
     id "java"
     id "java-gradle-plugin"
     id "checkstyle"
-    id "com.gradle.plugin-publish" version "1.0.0"
+    id "com.gradle.plugin-publish" version "1.1.0"
 }
 
 repositories {
     mavenCentral()
 }
-
-sourceCompatibility = JavaVersion.VERSION_1_8
-targetCompatibility = JavaVersion.VERSION_1_8
 
 // This Gradle plugin is published under the group "gradle.plugin.org.embulk".
 // We have an option to avoid the "gradle.plugin" prefix, but we don't do it as it bothers the Gradle team.
@@ -25,12 +22,18 @@ tasks.withType(JavaCompile) {
     options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+}
+
 dependencies {
     implementation gradleApi()
 
     testImplementation gradleTestKit()
-    testImplementation "org.junit.jupiter:junit-jupiter-api:5.8.2"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.8.2"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.9.2"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.9.2"
 }
 
 jar {
