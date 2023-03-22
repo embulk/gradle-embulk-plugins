@@ -17,7 +17,7 @@ targetCompatibility = JavaVersion.VERSION_1_8
 // They want Gradle plugins to be published under the "gradle.plugin" prefix for some security reasons.
 // https://plugins.gradle.org/docs/publish-plugin
 group = "org.embulk"
-version = "0.5.5-SNAPSHOT"
+version = "0.6.0-SNAPSHOT"
 description = "A Gradle plugin to build and publish Embulk plugins"
 
 tasks.withType(JavaCompile) {
