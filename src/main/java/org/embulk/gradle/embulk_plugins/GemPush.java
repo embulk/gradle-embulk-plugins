@@ -180,6 +180,14 @@ abstract class GemPush extends DefaultTask {
         return this.host;
     }
 
+    /**
+     * Property to configure a dependency notation for JRuby to run `gem build` and `gem push` commands.
+     */
+    @Internal
+    public Property<Object> getJruby() {
+        return this.jruby;
+    }
+
     private final Property<String> host;
 
     private final Property<Object> jruby;
