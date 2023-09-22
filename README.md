@@ -4,181 +4,254 @@ Gradle plugin for Embulk plugins
 Versions
 ---------
 
-| Plugin version | Supported Gradle versions | Method to manipulate `pom.xml`            |
-| -------------- | ------------------------- | ----------------------------------------- |
-| v0.4.5         | Gradle 6                  | Done by additional Gradle `configuration` |
-| v0.5.5         | Gradle 6 & 7              | Done by `pom.withXml`                     |
-| v0.6.0 (TBA)   | Gradle 7.6                | Done by `pom.withXml`                     |
+| Gradle Plugin version | Supported Gradle version(s) |
+| --------------------- | --------------------------- |
+| v0.6.1                | Gradle 7.6.1                |
 
-Quick Guide
+Gradle 8 is not officially supported yet. (It may work, but not confirmed.)
+
+Quick Start
 ------------
 
 ```
 plugins {
     id "java"
     id "maven-publish"
+    id "signing"
 
-    // Once this Gradle plugin is applied, its transitive dependencies are automatically updated to be flattened.
-    // The update affects the default `jar` task, and default Maven uploading mechanisms as well.
-    id "org.embulk.embulk-plugins" version "0.5.5"
+    // Apply this Gradle plugin.
+    id "org.embulk.embulk-plugins" version "0.6.1"
 }
-
-group = "com.example"
-version = "0.1.5-ALPHA"
-description = "An Embulk plugin to load example data."
 
 repositories {
     mavenCentral()
 }
 
+// Set your own group ID. It would typically be:
+// - From your own domain (ex. "com.example"), or
+// - From your GitHub account (ex. "io.github.your-github-user").
+//
+// Note that you should not use "org.embulk" unless the plugin is maintained under: https://github.com/embulk
+group = "..."
+
+// Set the version of the plugin.
+version = "0.1.5-SNAPSHOT"
+
+// Set the description of your plugin.
+description = "An Embulk plugin to load example data."
+
+configurations {
+    // We'd recommend to enable dependency locking so that you are aware of transitive dependencies.
+    // See: https://docs.gradle.org/current/userguide/dependency_locking.html
+    compileClasspath.resolutionStrategy.activateDependencyLocking()
+    runtimeClasspath.resolutionStrategy.activateDependencyLocking()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+
+    // "javadoc" JAR and "sources" JAR are required to publish the plugin to Maven Central.
+    withJavadocJar()
+    withSourcesJar()
+}
+
 dependencies {
-    compileOnly "org.embulk:embulk-api:0.10.29"
-    compileOnly "org.embulk:embulk-spi:0.10.29"
+    // The versioning rule of "embulk-spi" has been independent from Embulk versions since v0.11.
+    // It would be two digits, such as "0.11", "1.0", "1.1", ...
+    // This is the version of Embulk SPI, as a contract between the core and plugins.
+    compileOnly "org.embulk:embulk-spi:0.11"
 
-    // It should not depend on "embulk-core" if your Embulk plugin is in the new "v0.10-style".
-    // Depending on "embulk-core" is allowed only in the old "v0.9-style" Embulk plugins.
-    // compileOnly "org.embulk:embulk-core:0.10.29"
+    // An Embulk plugin should not depend on "embulk-core" if the plugin is ready for Embulk v0.11 and v1.0.
 
-    // It should depend some of "embulk-util-*" librarires if your plugin is in the new "v0.10-style".
-    // "embulk-util-config" is often mandatory.
-    // Note that your plugin should basically work with Embulk v0.9.23 even in the "v0.10-style".
-    compile "org.embulk:embulk-util-config:0.2.1"
+    // An Embulk plugin would usually depend some "embulk-util-*" librarires, for example, "embulk-util-config".
+    // Note that Gradle 7+ needs to declare dependencies by "implementation", not by "compile".
+    implementation "org.embulk:embulk-util-config:0.3.4"
+
     // ...
 
-    // Take care that other dependencies do not have transitive dependencies to `embulk-core` and its dependencies.
-    // You'll need to exclude those transitive dependencies explicitly in that case.
-    //
-    // For example:
-    // compile("org.embulk.base.restclient:embulk-base-restclient:0.7.0") {
-    //     exclude group: "org.embulk", module: "embulk-core"
-    // }
+    testImplementation "junit:junit:4.13.2"
 
-    testCompile "junit:junit:4.13"
-
-    testCompile "org.embulk:embulk-api:0.10.29"
-    testCompile "org.embulk:embulk-spi:0.10.29"
-    testCompile "org.embulk:embulk-core:0.10.29"
-
-    // TODO: Remove them.
-    // These `testCompile` are a tentative workaround. It will be covered in Embulk core's testing mechanism.
-    testCompile "org.embulk:embulk-deps:0.10.29"
+    // The Embulk main packages are often required for testing.
+    testImplementation "org.embulk:embulk-spi:0.11"
+    testImplementation "org.embulk:embulk-core:0.11.0"
+    testImplementation "org.embulk:embulk-deps:0.11.0"
+    testImplementation "org.embulk:embulk-junit4:0.11.0"
 }
 
 embulkPlugin {
+    // Set the plugin's main class.
     mainClass = "org.embulk.input.example.ExampleInputPlugin"
+
+    // Set: "decoder", "encoder", "filter", "formatter", "guess", "input", "output", or "parser"
     category = "input"
+
+    // Set the "type" of the Embulk plugin used in Embulk's configuration YAML.
+    // For instance, it would be "example" for "embulk-input-example".
     type = "example"
 }
 
-// This Gradle plugin's POM dependency modification works for "maven-publish" tasks.
+// It would be a good habit to contain the LICENSE file(s) at "META-INF/" in your plugin packages.
+jar {
+    metaInf {
+        from rootProject.file("LICENSE")
+    }
+}
+sourcesJar {
+    metaInf {
+        from rootProject.file("LICENSE")
+    }
+}
+javadocJar {
+    metaInf {
+        from rootProject.file("LICENSE")
+    }
+}
+
+// The publishing settings are usually required to publish the plugin to Maven Central.
+// Publish it by: "./gradlew publishMavenPublicationToMavenRepository"
 publishing {
     publications {
-        embulkPluginMaven(MavenPublication) {  // Publish it with "publishEmbulkPluginMavenPublicationToMavenRepository".
-            from components.java  // Must be "components.java".
+        maven(MavenPublication) {
+            groupId = project.group
+            artifactId = project.name
+
+            from components.java
+            // javadocJar and sourcesJar are added by java.withJavadocJar() and java.withSourcesJar() above.
+            // See: https://docs.gradle.org/current/javadoc/org/gradle/api/plugins/JavaPluginExtension.html
+
+            // Some pom.xml attributes are mandatory in Maven Central.
+            // See: https://central.sonatype.org/pages/requirements.html
+            pom {
+                packaging "jar"
+
+                name = project.name
+                description = project.description
+                url = "https://.../"
+
+                licenses {
+                    license {
+                        // See: http://central.sonatype.org/pages/requirements.html#license-information
+                        name = "..."
+                        url = "..."
+                        distribution = "repo"
+                    }
+                }
+
+                developers {
+                    developer {
+                        name = "..."
+                        email = "..."
+                    }
+                    developer {
+                        name = "..."
+                        email = "..."
+                    }
+                    // ...
+                }
+
+                scm {
+                    connection = "scm:git:git://github.com/.../....git"
+                    developerConnection = "scm:git:git@github.com:.../....git"
+                    url = "https://github.com/.../..."
+                }
+            }
         }
     }
+
     repositories {
-        maven {
-            url = "${project.buildDir}/mavenPublishLocal"
+        maven {  // publishMavenPublicationToMavenCentralRepository
+            name = "mavenCentral"
+
+            // Note that the URLs may be different in your case, depending on your OSSRH / Sonatype registration.
+            // See: https://central.sonatype.org/publish/publish-maven/
+            if (project.version.endsWith("-SNAPSHOT")) {
+                url "https://oss.sonatype.org/content/repositories/snapshots"
+            } else {
+                url "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+            }
+
+            // Just an optional technique to specify OSSRH username and password from Gradle properties.
+            //
+            // It is sometimes useful to publish the plugin to Maven Central from CI like GitHub Actions.
+            credentials {
+                username = project.hasProperty("ossrhUsername") ? ossrhUsername : ""
+                password = project.hasProperty("ossrhPassword") ? ossrhPassword : ""
+            }
         }
     }
 }
 
-// Enable this when you want to publish your plugin as a gem.
-// Note that `gem` is a type of archive tasks such as `jar` and `zip`, with some additional properties to fulfill `.gemspec`.
-//
+// The signing settings are usually required to publish the plugin to Maven Central.
+// See: https://central.sonatype.org/publish/requirements/gpg/
+signing {
+    // Just an optional technique to specify a GPG key and password from Gradle properties.
+    //
+    // Set your GPG key into "signingKey" in the ASCII armor format.
+    // Set your GPG key password into "signingPassword".
+    //
+    // It is sometimes useful to publish the plugin to Maven Central from CI like GitHub Actions.
+    if (project.hasProperty("signingKey") && project.hasProperty("signingPassword")) {
+        logger.lifecycle("Signing with an in-memory key.")
+        useInMemoryPgpKeys(signingKey, signingPassword)
+    }
+
+    sign publishing.publications.maven
+}
+
+// Enable the following "gem" and "gemPush" tasks if you want to publish your plugin also as a Ruby Gem.
+
 // gem {
-//     from("LICENSE")  // Optional -- if you need other files in the gem.
-//     authors = [ "Somebody Somewhere" ]
-//     email = [ "somebody@example.com" ]
-//     // "description" of the gem is copied from "description" of your Gradle project.
+//     authors = [ "..." ]
+//     email = [ "..." ]
+//     // "description" of the Ruby Gem would come from "description" of the Gradle project.
 //     summary = "Example input plugin for Embulk"
-//     homepage = "https://example.com"
-//     licenses = [ "Apache-2.0" ]
-//     metadata = [  // Optional -- if you need metadata in the gem.
-//         "foo": "bar"
-//     ]
+//     homepage = "https://.../"
+//     licenses = [ "..." ]  // See: https://guides.rubygems.org/specification-reference/#license=
+//
+//     from("LICENSE")  // If you want to include LICENSE file(s) in the Ruby Gem package.
 // }
 
-// Enable this when you want to publish your plugin as a gem.
-// Note that the `host` property is mandatory.
-//
+// Push it by: "./gradlew gemPush"
 // gemPush {
 //     host = "https://rubygems.org"
 // }
 ```
 
-### Dependency locking
+### How to migrate from old `build.gradle`
 
-The dependency configurations `compileClasspath` and `runtimeClasspath` have [dependency locking](https://docs.gradle.org/current/userguide/dependency_locking.html) activated by default.
-
-In the beginning of your Embulk plugin project, or after migrating your Embulk plugin project to use this Gradle plugin, it is recommended for you to run `./gradlew dependencies --write-locks`, and to add generated `lockfile`(s) in your version control system.
-
-* Gradle 6: `/gradle/dependency-locks/compileClasspath.lockfile` and `/gradle/dependency-locks/runtimeClasspath.lockfile`
-* Gradle 7: `/gradle.lockfile`
-
-Embulk plugins are sensitive about dependency libraries. Your project will have better checks about dependencies by `lockfile`(s).
-
-### How to migrate old-style `build.gradle` of your Embulk plugins
-
-1. Upgrade your Gradle wrapper to `6.4.1` or later.
+1. Upgrade your Gradle wrapper to `7.6.1`.
 2. Define `group`, `version`, and `description` in your Gradle project.
-    * `group` should **NOT** be `"org.embulk"` unless your project is under: https://github.com/embulk. For example:
+    * `group` should **NOT** be `"org.embulk"` unless your project is under: https://github.com/embulk.
       ```
       group = "com.example"
       version = "0.1.5-SNAPSHOT"
       description = "An Embulk plugin to load example data."
       ```
-3. Replace `compile` and `provided` in your dependencies to `compileOnly`.
+3. Replace dependencies on Embulk.
     * Old (without this Gradle plugin):
       ```
       compile "org.embulk:embulk-core:0.9.23"
       provided "org.embulk:embulk-core:0.9.23"
       ```
-    * Newer (with this Gradle plugin, but still in the "v0.9-style"):
+    * New:
       ```
-      compileOnly "org.embulk:embulk-core:0.9.23"
+      compileOnly "org.embulk:embulk-spi:0.11"
 
-      testCompile "org.embulk:embulk-core:0.9.23"
+      testImplementation "org.embulk:embulk-spi:0.11"
+      testImplementation "org.embulk:embulk-core:0.11.0"
+      testImplementation "org.embulk:embulk-deps:0.11.0"
+      testImplementation "org.embulk:embulk-junit4:0.11.0"
       ```
-    * New (with this Gradle plugin in the "v0.10-style"):
-      ```
-      compileOnly "org.embulk:embulk-api:0.10.29"
-      compileOnly "org.embulk:embulk-spi:0.10.29"
-
-      testCompile "org.embulk:embulk-api:0.10.29"
-      testCompile "org.embulk:embulk-spi:0.10.29"
-      testCompile "org.embulk:embulk-core:0.10.29"
-      testCompile "org.embulk:embulk-deps:0.10.29"
-      ```
-4. Add required `testCompile` if depending on `embulk-core:0.9.22+`.
-    * If tests depend on `embulk-core:0.9.22`:
-      ```
-      // TODO: Remove it.
-      // This `testCompile` is a tentative workaround. It will be covered in Embulk core's testing mechanism.
-      testCompile "org.embulk:embulk-deps-buffer:0.9.22"
-      ```
-    * If tests depend `embulk-core:0.9.23` (or 0.10 until `embulk-core:0.10.9`):
-      ```
-      // TODO: Remove them.
-      // These `testCompile` are a tentative workaround. It will be covered in Embulk core's testing mechanism.
-      testCompile "org.embulk:embulk-deps-buffer:0.9.23"
-      testCompile "org.embulk:embulk-deps-config:0.9.23"
-      ```
-    * If tests depend on `embulk-core:0.10.10`+:
-      ```
-      // TODO: Remove them.
-      // These `testCompile` are a tentative workaround. It will be covered in Embulk core's testing mechanism.
-      testCompile "org.embulk:embulk-deps:0.10.10"
-      ```
-5. **Remove** an unnecessary configuration.
+4. **Remove** an unnecessary configuration.
     * `provided`
     ```
     configurations {
         provided
     }
     ```
-6. **Remove** unnecessary tasks.
+5. **Remove** unnecessary tasks.
     * `classpath`
     ```
     task classpath(type: Copy, dependsOn: ["jar"]) {
@@ -188,7 +261,7 @@ Embulk plugins are sensitive about dependency libraries. Your project will have 
     }
     clean { delete "classpath" }
     ```
-    * `gem`: a task with the same name is defined in this Gradle plugin
+    * `gem`
     ```
     task gem(type: JRubyExec, dependsOn: ["gemspec", "classpath"]) {
         jrubyArgs "-rrubygems/gem_runner", "-eGem::GemRunner.new.run(ARGV)", "build"
@@ -196,7 +269,7 @@ Embulk plugins are sensitive about dependency libraries. Your project will have 
         doLast { ant.move(file: "${project.name}-${project.version}.gem", todir: "pkg") }
     }
     ```
-    * `gemPush`: a task with the same name is defined in this Gradle plugin
+    * `gemPush`
     ```
     task gemPush(type: JRubyExec, dependsOn: ["gem"]) {
         jrubyArgs "-rrubygems/gem_runner", "-eGem::GemRunner.new.run(ARGV)", "push"
@@ -212,7 +285,7 @@ Embulk plugins are sensitive about dependency libraries. Your project will have 
         }
     }
     ```
-    * `gemspec`: the `gem` task defined in this Gradle plugin generates `.gemspec` under `build/`, and uses it to build a gem
+    * `gemspec`
     ```
     task gemspec {
         ext.gemspecFile = file("${project.name}.gemspec")
@@ -242,36 +315,23 @@ Embulk plugins are sensitive about dependency libraries. Your project will have 
     }
     clean { delete "${project.name}.gemspec" }
     ```
-7. Remove an unnecessary file.
-    * `lib/embulk/<category>/<type>.rb`: the `gem` task defined in this Gradle plugin generates this `.rb` file under `build/` behind, and includes it in the gem. For example of `lib/embulk/input/example.rb`:
+6. **Remove** an unnecessary file.
+    * `lib/embulk/<category>/<type>.rb`
       ```
       Embulk::JavaPlugin.register_input(
         "example", "org.embulk.input.example.ExampleInputPlugin",
         File.expand_path('../../../../classpath', __FILE__))
       ```
-8. Apply this Gradle plugin `"org.embulk.embulk-plugins"`.
-    * Using the [plugins DSL](https://docs.gradle.org/current/userguide/plugins.html#sec:plugins_block):
+7. Apply this Gradle plugin `"org.embulk.embulk-plugins"`.
+    * In Gradle's [plugins DSL](https://docs.gradle.org/current/userguide/plugins.html#sec:plugins_block):
       ```
       plugins {
+          id "java"
           id "maven-publish"
-          id "org.embulk.embulk-plugins" version "0.5.5"
+          id "signing"
+          id "org.embulk.embulk-plugins" version "0.6.1"
       }
-    * Using [legacy plugin application](https://docs.gradle.org/current/userguide/plugins.html#sec:old_plugin_application):
-      ```
-      buildscript {
-          repositories {
-          maven {
-              url "https://plugins.gradle.org/m2/"
-          }
-      }
-      dependencies {
-          classpath "gradle.plugin.org.embulk:gradle-embulk-plugins:0.5.5"
-      }
-
-      apply plugin: "maven-publish"
-      apply plugin: "org.embulk.embulk-plugins"
-      ```
-9. Remove unnecessary JRuby/Gradle plugin.
+8. **Remove** unnecessary JRuby/Gradle plugin.
     * Plugin application:
       ```
           id "com.github.jruby-gradle.base" version "0.1.5"
@@ -280,7 +340,7 @@ Embulk plugins are sensitive about dependency libraries. Your project will have 
       ```
       import com.github.jrubygradle.JRubyExec
       ```
-10. Configure the task `embulkPlugin`.
+9. Configure the task `embulkPlugin`.
     * `mainClass`, `category`, and `type` are mandatory. For example:
       ```
       embulkPlugin {
@@ -289,47 +349,13 @@ Embulk plugins are sensitive about dependency libraries. Your project will have 
           type = "dummy"
       }
       ```
-11. Configure publishing the plugin JAR to the Maven repository where you want to upload.
-    * The standard `jar` task is already reconfigured to generate a JAR ready as an Embulk plugin.
-    * Note that `uploadArchives` with the `maven` plugin is no longer supported.
-    * Publishing example with `maven-publish`:
-    ```
-    publishing {
-        publications {
-            embulkPluginMaven(MavenPublication) {  // Publish it with "publishEmbulkPluginMavenPublicationToMavenRepository".
-                from components.java  // Must be "components.java". The dependency modification works only for it.
-            }
-        }
-        repositories {
-            maven {
-                url = "${project.buildDir}/mavenPublishLocal"
-            }
-        }
-    }
-    ```
-12. Configure more to publish your plugin as a gem.
-    * Configure the `gem` task. Note that `gem` is a type of archive tasks such as `jar` and `zip`, with some additional properties to fulfill `.gemspec`:
-      ```
-      gem {
-          from("LICENSE")  // Optional -- if you need other files in the gem.
-          authors = [ "Somebody Somewhere" ]
-          email = [ "somebody@example.com" ]
-          // "description" of the gem is copied from "description" of your Gradle project.
-          summary = "Example input plugin for Embulk"
-          homepage = "https://example.com"
-          licenses = [ "Apache-2.0" ]
-          metadata = [  // Optional -- if you need metadata in the gem.
-              "foo": "bar"
-          ]
-      }
-      ```
-    * Configure the `gemPush` task. Note that the `host` property is mandatory:
-      ```
-      gemPush {
-          host = "https://rubygems.org"
-      }
-      ```
-    * Note that `rubygems` 2.7.9 embedded in JRuby 9.2.7.0 (the latest as of July 2019) does not support multi-factor authentication (OTP) yet. You'll need to set your authentication level to "UI only" when you push your gem into https://rubygems.org.
+10. Configure `publishing`. Recommended to publish your Embulk plugin to Maven Central.
+    * See the example above.
+11. Configure `signing`. It is mandatory to publish your Embulk plugin to Maven Central.
+    * See the example above.
+12. Configure `gem` and `gemPush` if you want to publish your Embulk plugin also as a Ruby Gem.
+    * See the example above.
+    * Note that JRuby's `rubygems` may not support multi-factor authentication (OTP) for [https://rubygems.org/](https://rubygems.org/) yet. You may need to set your authentication level to "UI only".
         * https://guides.rubygems.org/setting-up-multifactor-authentication/
 
 What this Gradle plugin does?
@@ -345,8 +371,8 @@ In addition, this Gradle plugin provides some support for publishing RubyGems-ba
 
 This Gradle plugin depends on Gradle's `java-plugin` and `maven-publish-plugin`.
 
-For Maintainers
-----------------
+For Maintainers of this Gradle plugin
+--------------------------------------
 
 ### Release
 
