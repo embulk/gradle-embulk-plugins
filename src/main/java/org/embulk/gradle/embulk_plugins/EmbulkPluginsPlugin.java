@@ -290,6 +290,4 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
             return mavenVersion;
         }
     }
-
-    static final String DEFAULT_JRUBY = "org.jruby:jruby-complete:9.2.7.0";
 }

@@ -70,7 +70,7 @@ abstract class GemPush extends DefaultTask {
         this.host = objectFactory.property(String.class);
 
         this.jruby = objectFactory.property(Object.class);
-        this.jruby.set(EmbulkPluginsPlugin.DEFAULT_JRUBY);
+        this.jruby.set(Gem.DEFAULT_JRUBY);
     }
 
     @Incremental

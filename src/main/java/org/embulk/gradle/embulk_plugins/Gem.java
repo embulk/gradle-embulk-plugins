@@ -106,7 +106,7 @@ class Gem extends AbstractArchiveTask {
         this.generateGemspec.set(true);
 
         this.jruby = objectFactory.property(Object.class);
-        this.jruby.set(EmbulkPluginsPlugin.DEFAULT_JRUBY);
+        this.jruby.set(DEFAULT_JRUBY);
 
         this.getArchiveExtension().set("gem");
     }
@@ -489,6 +489,8 @@ class Gem extends AbstractArchiveTask {
         builder.append(pathElementStream.map(pathElement -> pathElement.toString()).collect(Collectors.joining("/")));
         return builder.toString();
     }
+
+    static final String DEFAULT_JRUBY = "org.jruby:jruby-complete:9.4.3.0";
 
     private final Property<String> embulkPluginMainClass;
     private final Property<String> embulkPluginCategory;
