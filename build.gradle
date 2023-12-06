@@ -39,7 +39,6 @@ dependencies {
 jar {
     metaInf {
         from rootProject.file("LICENSE")
-        from rootProject.file("NOTICE")
     }
 }
 
