@@ -2,7 +2,7 @@ plugins {
     id "java"
     id "java-gradle-plugin"
     id "checkstyle"
-    id "com.gradle.plugin-publish" version "1.1.0"
+    id "com.gradle.plugin-publish" version "1.2.1"
 }
 
 repositories {
@@ -44,20 +44,18 @@ jar {
 }
 
 gradlePlugin {
+    website = "https://www.embulk.org/"
+    vcsUrl = "https://github.com/embulk/gradle-embulk-plugins"
+
     plugins {
         embulkPluginsPlugin {
             id = "org.embulk.embulk-plugins"
             displayName = "A Gradle plugin for Embulk plugins"
             description = "${project.description}"
             implementationClass = "org.embulk.gradle.embulk_plugins.EmbulkPluginsPlugin"
+            tags.set(["embulk"])
         }
     }
-}
-
-pluginBundle {
-    website = "http://www.embulk.org/"
-    vcsUrl = "https://github.com/embulk/gradle-embulk-plugins"
-    tags = ["embulk"]
 }
 
 test {
