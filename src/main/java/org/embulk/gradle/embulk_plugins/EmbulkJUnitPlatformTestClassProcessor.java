@@ -20,6 +20,8 @@ import org.gradle.api.Action;
 import org.gradle.api.internal.tasks.testing.TestResultProcessor;
 import org.gradle.api.internal.tasks.testing.filter.TestSelectionMatcher;
 import org.gradle.api.internal.tasks.testing.junit.AbstractJUnitTestClassProcessor;
+import org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformSpec;
+import org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestExecutionListener;
 import org.gradle.internal.UncheckedException;
 import org.gradle.internal.actor.Actor;
 import org.gradle.internal.actor.ActorFactory;
@@ -35,8 +37,10 @@ import org.junit.platform.engine.support.descriptor.MethodSource;
 import org.junit.platform.launcher.Launcher;
 import org.junit.platform.launcher.LauncherDiscoveryRequest;
 import org.junit.platform.launcher.PostDiscoveryFilter;
+import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
 import org.junit.platform.launcher.core.LauncherFactory;
+
 
 import javax.annotation.Nonnull;
 import java.lang.reflect.Modifier;
@@ -56,6 +60,7 @@ public class EmbulkJUnitPlatformTestClassProcessor extends AbstractJUnitTestClas
 
     public EmbulkJUnitPlatformTestClassProcessor(JUnitPlatformSpec spec, IdGenerator<?> idGenerator, ActorFactory actorFactory, Clock clock) {
         super(spec, idGenerator, actorFactory, clock);
+        System.out.println("!!!!!!");
     }
 
     @Override
@@ -95,7 +100,7 @@ public class EmbulkJUnitPlatformTestClassProcessor extends AbstractJUnitTestClas
 
         private void processAllTestClasses() {
             Launcher launcher = LauncherFactory.create();
-            launcher.registerTestExecutionListeners(new JUnitPlatformTestExecutionListener(resultProcessor, clock, idGenerator));
+            launcher.registerTestExecutionListeners((TestExecutionListener) new JUnitPlatformTestExecutionListener(resultProcessor, clock, idGenerator));
             launcher.execute(createLauncherDiscoveryRequest(testClasses));
         }
     }

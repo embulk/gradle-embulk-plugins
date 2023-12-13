@@ -53,5 +53,7 @@ class TestSimple {
             System.out.println(line);
         }
         System.out.println("============================================================");
+
+        runGradle(projectDir, "embulkPluginTest");
     }
 }
