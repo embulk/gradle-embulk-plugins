@@ -59,18 +59,23 @@ public class EmbulkJUnitPlatformTestFramework extends JUnitPlatformTestFramework
 
     @Override
     public WorkerTestClassProcessorFactory getProcessorFactory() {
+        final WorkerTestClassProcessorFactory factory;
+
+        factory = super.getProcessorFactory();
+
         /*
-        return super.getProcessorFactory();
-        */
-        if (!JavaVersion.current().isJava8Compatible()) {
-            throw new UnsupportedJavaRuntimeException("Running JUnit Platform requires Java 8+, please configure your test java executable with Java 8 or higher.");
-        }
-        return new EmbulkJUnitPlatformTestClassProcessorFactory(new JUnitPlatformSpec(this.getOptions(),
+        factory = new EmbulkJUnitPlatformTestClassProcessorFactory(new JUnitPlatformSpec(this.getOptions(),
             filter2.getIncludePatterns(), filter2.getExcludePatterns(),
             filter2.getCommandLineIncludePatterns()));
+        */
+
+        System.out.println(factory.getClass());
+        System.out.println(factory.toString());
+
+        return factory;
     }
 
-    static class EmbulkJUnitPlatformTestClassProcessorFactory implements WorkerTestClassProcessorFactory, Serializable {
+    public static class EmbulkJUnitPlatformTestClassProcessorFactory implements WorkerTestClassProcessorFactory, Serializable {
         private final JUnitPlatformSpec spec;
 
         EmbulkJUnitPlatformTestClassProcessorFactory(JUnitPlatformSpec spec) {
@@ -83,8 +88,8 @@ public class EmbulkJUnitPlatformTestFramework extends JUnitPlatformTestFramework
                 IdGenerator<?> idGenerator = serviceRegistry.get(IdGenerator.class);
                 Clock clock = serviceRegistry.get(Clock.class);
                 ActorFactory actorFactory = serviceRegistry.get(ActorFactory.class);
-                // Class<?> clazz = getClass().getClassLoader().loadClass("org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestClassProcessor");
-                Class<?> clazz = getClass().getClassLoader().loadClass("org.embulk.gradle.embulk_plugins.EmbulkJUnitPlatformTestClassProcessor");
+                Class<?> clazz = getClass().getClassLoader().loadClass("org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestClassProcessor");
+                // Class<?> clazz = getClass().getClassLoader().loadClass("org.embulk.gradle.embulk_plugins.EmbulkJUnitPlatformTestClassProcessor");
 
                 Constructor<?> constructor = clazz.getConstructor(JUnitPlatformSpec.class, IdGenerator.class, ActorFactory.class, Clock.class);
                 return (TestClassProcessor) constructor.newInstance(spec, idGenerator, actorFactory, clock);

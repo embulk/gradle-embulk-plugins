@@ -39,6 +39,7 @@ public class EmbulkPluginTest extends Test {
             method.setAccessible(true);
             System.out.println("!");
             method.invoke(this, new EmbulkJUnitPlatformTestFramework((DefaultTestFilter) this.getFilter()));
+            // method.invoke(this, new JUnitPlatformTestFramework((DefaultTestFilter) this.getFilter()));
             System.out.println("?");
         } catch (final IllegalAccessException ex) {
             throw new GradleException("Unexpected failure", ex);

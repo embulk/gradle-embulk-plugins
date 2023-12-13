@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.io.CleanupMode;
 
 /**
  * Tests a simple case in the Embulk plugins Gradle plugin.
@@ -40,7 +41,7 @@ import org.junit.jupiter.api.io.TempDir;
 class TestSimple {
     @Test
     @DisabledOnOs(OS.WINDOWS)
-    public void test(@TempDir Path tempDir) throws IOException {
+    public void test(@TempDir(cleanup = CleanupMode.ON_SUCCESS) Path tempDir) throws IOException {
         final Path projectDir = prepareProjectDir(tempDir, "testSimple");
         runGradle(projectDir, "compileJava", "generatePomFileForEmbulkPluginMavenPublication");
 
