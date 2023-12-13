@@ -4,9 +4,11 @@ Gradle plugin for Embulk plugins
 Versions
 ---------
 
-| Gradle Plugin version | Supported Gradle version(s) |
-| --------------------- | --------------------------- |
-| v0.6.1                | Gradle 7.6.1                |
+| Gradle Plugin version | Expected Gradle version |
+| --------------------- | ----------------------- |
+| v0.6.2                | Gradle 7.6 (7.6.3)      |
+| v0.6.1                | Gradle 7.6 (7.6.1)      |
+| v0.6.0                | Gradle 7.6 (7.6.1)      |
 
 Gradle 8 is not officially supported yet. (It may work, but not confirmed.)
 
@@ -20,7 +22,7 @@ plugins {
     id "signing"
 
     // Apply this Gradle plugin.
-    id "org.embulk.embulk-plugins" version "0.6.1"
+    id "org.embulk.embulk-plugins" version "0.6.2"
 }
 
 repositories {
@@ -221,7 +223,7 @@ signing {
 
 ### How to migrate from old `build.gradle`
 
-1. Upgrade your Gradle wrapper to `7.6.1`.
+1. Upgrade your Gradle wrapper to `7.6.3`.
 2. Define `group`, `version`, and `description` in your Gradle project.
     * `group` should **NOT** be `"org.embulk"` unless your project is under: https://github.com/embulk.
       ```
@@ -329,7 +331,7 @@ signing {
           id "java"
           id "maven-publish"
           id "signing"
-          id "org.embulk.embulk-plugins" version "0.6.1"
+          id "org.embulk.embulk-plugins" version "0.6.2"
       }
 8. **Remove** unnecessary JRuby/Gradle plugin.
     * Plugin application:
