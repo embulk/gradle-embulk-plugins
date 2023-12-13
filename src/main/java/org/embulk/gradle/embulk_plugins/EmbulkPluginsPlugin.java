@@ -67,6 +67,7 @@ public class EmbulkPluginsPlugin implements Plugin<Project> {
 
         createExtension(project);
 
+        project.getTasks().create("embulkPluginTest", EmbulkPluginTest.class);
         project.getTasks().create("gem", Gem.class);
         project.getTasks().create("gemPush", GemPush.class);
 

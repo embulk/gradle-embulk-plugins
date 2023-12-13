@@ -21,6 +21,10 @@ tasks.withType(JavaCompile) {
     options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
 }
 
+embulkPluginTest {
+    useEmbulkJUnitPlatform()
+}
+
 dependencies {
     compileOnly "org.embulk:embulk-api:0.10.35"
     compileOnly "org.embulk:embulk-spi:0.10.35"
