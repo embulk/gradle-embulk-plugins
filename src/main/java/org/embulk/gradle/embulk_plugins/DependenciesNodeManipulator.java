@@ -567,13 +567,13 @@ final class DependenciesNodeManipulator implements AutoCloseable {
     private static final Method METHOD_XML_GET_QUALIFIED_NAME;
 
     static {
-        Class<?> classNamespaceQName = null;
+        Class<?> classNamespaceQname = null;
         try {
-            classNamespaceQName = Class.forName("groovy.namespace.QName");
+            classNamespaceQname = Class.forName("groovy.namespace.QName");
         } catch (final ClassNotFoundException ex) {
             // Pass-through.
         }
-        CLASS_NAMESPACE_QNAME = classNamespaceQName;
+        CLASS_NAMESPACE_QNAME = classNamespaceQname;
 
         if (CLASS_NAMESPACE_QNAME == null) {
             METHOD_NAMESPACE_GET_QUALIFIED_NAME = null;
@@ -587,13 +587,13 @@ final class DependenciesNodeManipulator implements AutoCloseable {
             METHOD_NAMESPACE_GET_QUALIFIED_NAME = methodNamespaceGetQualifiedName;
         }
 
-        Class<?> classXmlQName = null;
+        Class<?> classXmlQname = null;
         try {
-            classXmlQName = Class.forName("groovy.xml.QName");
+            classXmlQname = Class.forName("groovy.xml.QName");
         } catch (final ClassNotFoundException ex) {
             // Pass-through.
         }
-        CLASS_XML_QNAME = classXmlQName;
+        CLASS_XML_QNAME = classXmlQname;
 
         if (CLASS_XML_QNAME == null) {
             METHOD_XML_GET_QUALIFIED_NAME = null;

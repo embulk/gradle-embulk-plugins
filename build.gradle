@@ -70,11 +70,18 @@ test {
     }
 }
 
+tasks.withType(Checkstyle) {
+    reports {
+        // Not to skip up-to-date checkstyles.
+        outputs.upToDateWhen { false }
+    }
+}
+
 checkstyle {
-    toolVersion "8.23"
-    configFile = file("${projectDir}/config/checkstyle/checkstyle.xml")
+    toolVersion "9.3"
+    configFile = file("${rootProject.projectDir}/config/checkstyle/checkstyle.xml")
     configProperties = [
-        "checkstyle.config.path": file("${projectDir}/config/checkstyle")
+        "org.checkstyle.google.suppressionfilter.config": file("${rootProject.projectDir}/config/checkstyle/checkstyle-suppressions.xml"),
     ]
     ignoreFailures = false
     maxWarnings = 0

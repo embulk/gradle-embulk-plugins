@@ -1,13 +1,15 @@
 <?xml version="1.0"?>
 
 <!DOCTYPE suppressions PUBLIC
-    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
-    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+    "-//Puppy Crawl//DTD Suppressions 1.2//EN"
+    "http://checkstyle.sourceforge.net/dtds/suppressions_1_2.dtd">
 
 <suppressions>
   <suppress checks="JavadocMethod" files=".*"/>
   <suppress checks="JavadocParagraph" files=".*"/>
   <suppress checks="JavadocTagContinuationIndentation" files=".*"/>
+  <suppress checks="MissingJavadocType" files=".*"/>
+  <suppress checks="PackageName" files=".*"/>
   <suppress checks="SingleLineJavadoc" files=".*"/>
   <suppress checks="SummaryJavadoc" files=".*"/>
 </suppressions>
