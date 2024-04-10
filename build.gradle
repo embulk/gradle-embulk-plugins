@@ -18,8 +18,8 @@ version = "0.7.0-SNAPSHOT"
 description = "A Gradle plugin to build and publish Embulk plugins"
 
 tasks.withType(JavaCompile) {
-    options.encoding = "UTF-8"
     options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+    options.encoding = "UTF-8"
 }
 
 java {
@@ -32,8 +32,9 @@ dependencies {
     implementation gradleApi()
 
     testImplementation gradleTestKit()
-    testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.1"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.10.1"
+    testImplementation platform(libs.junit5.bom)
+    testImplementation libs.bundles.junit5.implementation
+    testRuntimeOnly libs.bundles.junit5.runtime
 }
 
 jar {
@@ -60,13 +61,13 @@ gradlePlugin {
 test {
     useJUnitPlatform()
     testLogging {
-        outputs.upToDateWhen { false }
+        events "passed", "skipped", "failed", "standardOut", "standardError"
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
         showCauses = true
         showExceptions = true
         showStackTraces = true
         showStandardStreams = true
-        events "passed", "skipped", "failed", "standardOut", "standardError"
+        outputs.upToDateWhen { false }
     }
 }
 
