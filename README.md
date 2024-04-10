@@ -6,11 +6,10 @@ Versions
 
 | Gradle Plugin version | Expected Gradle version |
 | --------------------- | ----------------------- |
+| v0.7.0                | Gradle 8.7              |
 | v0.6.2                | Gradle 7.6 (7.6.3)      |
 | v0.6.1                | Gradle 7.6 (7.6.1)      |
 | v0.6.0                | Gradle 7.6 (7.6.1)      |
-
-Gradle 8 is not officially supported yet. (It may work, but not confirmed.)
 
 Quick Start
 ------------
@@ -22,7 +21,7 @@ plugins {
     id "signing"
 
     // Apply this Gradle plugin.
-    id "org.embulk.embulk-plugins" version "0.6.2"
+    id "org.embulk.embulk-plugins" version "0.7.0"
 }
 
 repositories {
@@ -69,7 +68,7 @@ dependencies {
 
     // An Embulk plugin would usually depend some "embulk-util-*" librarires, for example, "embulk-util-config".
     // Note that Gradle 7+ needs to declare dependencies by "implementation", not by "compile".
-    implementation "org.embulk:embulk-util-config:0.3.4"
+    implementation "org.embulk:embulk-util-config:0.5.0"
 
     // ...
 
@@ -331,7 +330,7 @@ signing {
           id "java"
           id "maven-publish"
           id "signing"
-          id "org.embulk.embulk-plugins" version "0.6.2"
+          id "org.embulk.embulk-plugins" version "0.7.0"
       }
 8. **Remove** unnecessary JRuby/Gradle plugin.
     * Plugin application:
