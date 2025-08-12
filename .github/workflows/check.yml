@@ -11,14 +11,14 @@ jobs:
       matrix:
         os:
         - ubuntu-latest
-        - macOS-latest
+        - macOS-13  # OpenJDK 8 is not supported on macos-14+ (M1).
         - windows-latest
         gradle:
         - "8.7"
     steps:
     - name: Set Git's core.autocrlf to false for Windows before checkout
       run: git config --global core.autocrlf false
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Bump Gradle version
       run: ./gradlew wrapper --gradle-version=${{ matrix.gradle }}
     - name: Re-bump Gradle version
