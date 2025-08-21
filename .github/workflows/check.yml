@@ -24,7 +24,7 @@ jobs:
     - name: Re-bump Gradle version
       run: ./gradlew wrapper --gradle-version=${{ matrix.gradle }}
     - name: Set up OpenJDK 8
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: 8
         distribution: "temurin"
