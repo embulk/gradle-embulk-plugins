@@ -19,7 +19,7 @@ jobs:
     steps:
     - name: Set Git's core.autocrlf to false for Windows before checkout
       run: git config --global core.autocrlf false
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
     - name: Bump Gradle version
       run: ./gradlew wrapper --gradle-version=${{ matrix.gradle }}
     - name: Re-bump Gradle version
